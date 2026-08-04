@@ -611,7 +611,7 @@ EV: ${morningBlissEv}`;
     const star1 = [];
     
     CLASSES.forEach(c => {
-      const classStudents = students.filter(s => s.class === c && s.morningBlissMark != null && s.summaryDate === todayDateStr);
+      const classStudents = students.filter(s => s.class === c && s.morningBlissMark != null && s.morningBlissMark !== '' && (s.summaryDate === todayDateStr || !s.summaryDate));
       classStudents.forEach(s => {
         const total = (Number(s.morningBlissMark) || 0) + (Number(s.morningBlissScript) || 0);
         tableData.push([
@@ -4275,7 +4275,7 @@ Fine Amount: ${amount}`;
                             <tbody>
                               {CLASSES.flatMap(c => {
                                 const todayDateStr = new Date().toISOString().split('T')[0];
-                                const classStudents = students.filter(s => s.class === c && s.morningBlissMark != null && s.morningBlissMark !== '' && s.summaryDate === todayDateStr);
+                                const classStudents = students.filter(s => s.class === c && s.morningBlissMark != null && s.morningBlissMark !== '' && (s.summaryDate === todayDateStr || !s.summaryDate));
                                 if (classStudents.length === 0) return [];
 
                                 return classStudents.map(s => {
@@ -4326,7 +4326,13 @@ Fine Amount: ${amount}`;
                                     <td className="p-3 text-slate-600 text-sm">{s.morningBlissEv || '-'}</td>
                                   </tr>
                                 )});
-                              })}
+                              }).length === 0 && (
+                                <tr>
+                                  <td colSpan="7" className="p-8 text-center text-slate-400 font-medium">
+                                    No Morning Bliss evaluations recorded for today yet. Use the "Morning Bliss" form to submit evaluations for today.
+                                  </td>
+                                </tr>
+                              )}
                             </tbody>
                           </table>
                         </div>

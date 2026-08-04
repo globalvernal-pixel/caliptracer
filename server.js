@@ -154,6 +154,14 @@ async function initDb() {
       ADD COLUMN IF NOT EXISTS custom_grade TEXT DEFAULT '',
       ADD COLUMN IF NOT EXISTS summary_id INT REFERENCES morning_bliss_summary(id) ON DELETE SET NULL;
     `);
+
+    // Ensure today's summary exists and map any existing unlinked Morning Bliss records to today's summary
+    await pool.query(`
+      INSERT INTO morning_bliss_summary (date) VALUES (CURRENT_DATE) ON CONFLICT (date) DO NOTHING;
+      UPDATE students 
+      SET summary_id = (SELECT id FROM morning_bliss_summary WHERE date = CURRENT_DATE LIMIT 1)
+      WHERE morning_bliss_mark IS NOT NULL AND summary_id IS NULL;
+    `);
     
     // Check if table is empty
     const checkRes = await pool.query('SELECT COUNT(*) FROM students');
