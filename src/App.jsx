@@ -3,6 +3,7 @@ import LoginPage from './LoginPage.jsx';
 import * as XLSX from 'xlsx';
 import { jsPDF } from "jspdf";
 import autoTable from 'jspdf-autotable';
+import html2canvas from 'html2canvas';
 import logo from './logo.png';
 import { 
   Sparkles, 
@@ -39,6 +40,7 @@ import {
   CheckCircle2,
   MessageSquare,
   AlertCircle,
+  AlertTriangle,
   Settings,
   Eye,
   EyeOff,
@@ -46,7 +48,9 @@ import {
   ArrowDown,
   Pencil,
   Sun,
-  List
+  List,
+  Camera,
+  Smartphone
 } from 'lucide-react';
 
 // Initial seed data for the 8 classes with demo student names and score records
@@ -621,7 +625,31 @@ export default function App() {
   const [morningBlissDuration, setMorningBlissDuration] = useState(0); // seconds
   const [isStopwatchRunning, setIsStopwatchRunning] = useState(false);
   const [mbFromDate, setMbFromDate] = useState(() => new Date().toISOString().split('T')[0]);
-  const [mbToDate, setMbToDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const handleDownloadScreenshotCard = async (elementId, fileName = 'Report_Card.png') => {
+    try {
+      const cardElement = document.getElementById(elementId);
+      if (!cardElement) {
+        alert('Card element not found for screenshot!');
+        return;
+      }
+      const canvas = await html2canvas(cardElement, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#FFFFFF',
+        logging: false
+      });
+      const imageUri = canvas.toDataURL('image/png');
+      const link = document.createElement('a');
+      link.href = imageUri;
+      link.download = fileName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      console.error('Error generating screenshot card:', err);
+      alert('Failed to generate screenshot image. Please try again.');
+    }
+  };
 
   useEffect(() => {
     let interval;
@@ -4989,8 +5017,12 @@ Fine Amount: ${amount}`;
                           <button
                             key={num}
                             onClick={() => {
-                              setSelectedRoom(`Room ${num}`);
-                              setPerformanceSelectedStudents([]);
+                              const roomStr = `Room ${num}`;
+                              setSelectedRoom(roomStr);
+                              const allocated = ROOM_STUDENT_MAPPING[String(num)] !== undefined ? 
+                                ROOM_STUDENT_MAPPING[String(num)] : 
+                                students.filter(s => String(s.room || s.roomNumber || '').trim() === String(num));
+                              setPerformanceSelectedStudents(allocated.map(s => s.id));
                             }}
                             className="p-4 bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 rounded-2xl shadow-sm hover:shadow transition-all active:scale-[0.96] flex flex-col items-center justify-center gap-1.5 group"
                           >
@@ -5013,162 +5045,126 @@ Fine Amount: ${amount}`;
                       const selectedCount = performanceSelectedStudents.length;
 
                       return (
-                        <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-50">
-                          {/* Left Panel: Actions (Tally & Fine) */}
-                          <div className="w-full md:w-80 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-4 flex flex-col gap-4 shrink-0 shadow-sm">
-                            <div className="bg-emerald-50 border border-emerald-100 p-3.5 rounded-2xl flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
-                                  <School className="w-5 h-5" />
-                                </div>
-                                <div>
-                                  <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block">{selectedHostel}</span>
-                                  <h3 className="text-[#1A365D] font-extrabold text-sm uppercase">{selectedRoom}</h3>
-                                </div>
+                        <div className="flex-1 overflow-hidden flex flex-col bg-slate-50 relative">
+                          {/* TOP BAR: Room Details Card at very top (replacing "Allocated Students" heading) */}
+                          <div className="p-3 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between shrink-0 shadow-xs">
+                            <div className="flex items-center gap-2.5">
+                              <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
+                                <School className="w-5 h-5" />
                               </div>
+                              <div>
+                                <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block leading-tight">{selectedHostel}</span>
+                                <h3 className="text-[#1A365D] font-extrabold text-sm uppercase leading-tight">{selectedRoom} ({allocatedRoomStudents.length} Students)</h3>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-2">
+                              <button
+                                onClick={() => {
+                                  if (selectedCount === allocatedRoomStudents.length) {
+                                    setPerformanceSelectedStudents([]);
+                                  } else {
+                                    setPerformanceSelectedStudents(allocatedRoomStudents.map(s => s.id));
+                                  }
+                                }}
+                                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-100/80 hover:bg-emerald-200 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors"
+                              >
+                                {selectedCount === allocatedRoomStudents.length ? 'Deselect All' : 'Select All'}
+                              </button>
                               <button
                                 onClick={() => {
                                   setSelectedRoom(null);
                                   setPerformanceSelectedStudents([]);
                                 }}
-                                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-100/60 hover:bg-emerald-200 px-2.5 py-1 rounded-lg transition-colors"
+                                className="text-xs font-bold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors shadow-2xs"
                               >
                                 Change
                               </button>
                             </div>
-
-                            <div className="flex flex-col gap-3 flex-1 justify-center">
-                              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Room Actions</div>
-                              
-                              {/* 1. TALLY BUTTON */}
-                              <button
-                                onClick={() => {
-                                  if (selectedCount === 0) {
-                                    alert('Please select at least one student from the room first!');
-                                    return;
-                                  }
-                                  setRoomTallyCount(1);
-                                  setRoomTallyReason('Room untidy');
-                                  setShowRoomTallyModal(true);
-                                }}
-                                className="w-full p-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl font-extrabold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-between group"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                                    <Award className="w-5 h-5 text-white" />
-                                  </div>
-                                  <div className="text-left">
-                                    <div className="font-extrabold text-sm">1. Tally</div>
-                                    <div className="text-[10px] text-emerald-100 font-medium">(N&Order Effect)</div>
-                                  </div>
-                                </div>
-                                <ChevronRight className="w-5 h-5 text-white/70 group-hover:translate-x-1 transition-transform" />
-                              </button>
-
-                              {/* 2. FINE BUTTON */}
-                              <button
-                                onClick={() => {
-                                  if (selectedCount === 0) {
-                                    alert('Please select at least one student from the room first!');
-                                    return;
-                                  }
-                                  setRoomFineAmount('50');
-                                  setRoomFineReason('Room untidy / Disturbance');
-                                  setShowRoomFineModal(true);
-                                }}
-                                className="w-full p-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl font-extrabold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-between group"
-                              >
-                                <div className="flex items-center gap-3">
-                                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                                    <AlertTriangle className="w-5 h-5 text-white" />
-                                  </div>
-                                  <div className="text-left">
-                                    <div className="font-extrabold text-sm">2. Fine</div>
-                                    <div className="text-[10px] text-amber-100 font-medium">(Show in Fine)</div>
-                                  </div>
-                                </div>
-                                <ChevronRight className="w-5 h-5 text-white/70 group-hover:translate-x-1 transition-transform" />
-                              </button>
-                            </div>
-
-                            <div className="p-3 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                              <span className="font-bold text-slate-600">Selected Students:</span>
-                              <span className="font-black text-emerald-700 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-xs">
-                                {selectedCount} / {allocatedRoomStudents.length}
-                              </span>
-                            </div>
                           </div>
 
-                          {/* Right Panel: Allocated Students Checklist */}
-                          <div className="flex-1 overflow-hidden flex flex-col p-4">
-                            <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-200 shrink-0">
-                              <div>
-                                <h4 className="font-extrabold text-sm text-[#1A365D]">Allocated Students</h4>
-                                <span className="text-[11px] font-semibold text-slate-400">
-                                  {allocatedRoomStudents.length} students in {selectedRoom}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
+                          {/* MAIN AREA: Student Checklist takes maximum height, showing all allocated students */}
+                          <div className="flex-1 overflow-y-auto p-3 sm:p-4 flex flex-col gap-2.5 pb-20">
+                            {allocatedRoomStudents.map(student => {
+                              const isChecked = performanceSelectedStudents.includes(student.id);
+                              return (
                                 <button
+                                  key={student.id}
                                   onClick={() => {
-                                    if (selectedCount === allocatedRoomStudents.length) {
-                                      setPerformanceSelectedStudents([]);
-                                    } else {
-                                      setPerformanceSelectedStudents(allocatedRoomStudents.map(s => s.id));
-                                    }
+                                    setPerformanceSelectedStudents(prev =>
+                                      prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id]
+                                    );
                                   }}
-                                  className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors"
+                                  className={`p-3.5 border rounded-2xl flex items-center justify-between transition-all active:scale-[0.99] text-left shadow-2xs ${
+                                    isChecked
+                                      ? 'bg-emerald-50/80 border-emerald-500 text-emerald-950 shadow-xs'
+                                      : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/50'
+                                  }`}
                                 >
-                                  {selectedCount === allocatedRoomStudents.length ? 'Deselect All' : 'Select All'}
-                                </button>
-                              </div>
-                            </div>
-
-                            <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1">
-                              {allocatedRoomStudents.map(student => {
-                                const isChecked = performanceSelectedStudents.includes(student.id);
-                                return (
-                                  <button
-                                    key={student.id}
-                                    onClick={() => {
-                                      setPerformanceSelectedStudents(prev =>
-                                        prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id]
-                                      );
-                                    }}
-                                    className={`p-3.5 border rounded-2xl flex items-center justify-between transition-all active:scale-[0.99] text-left shadow-xs ${
-                                      isChecked
-                                        ? 'bg-emerald-50/70 border-emerald-500 text-emerald-950 shadow-sm'
-                                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/50'
-                                    }`}
-                                  >
-                                    <div className="flex items-center gap-3">
-                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
-                                        isChecked ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
-                                      }`}>
-                                        {student.name.charAt(0)}
-                                      </div>
-                                      <div className="flex flex-col">
-                                        <span className="font-extrabold text-sm leading-tight text-slate-800">{student.name}</span>
-                                        <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
-                                          Class <span className="text-emerald-700 font-extrabold">{student.class}</span>
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${
-                                      isChecked ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 bg-white'
+                                  <div className="flex items-center gap-3">
+                                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
+                                      isChecked ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
                                     }`}>
-                                      {isChecked && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                                      {student.name.charAt(0)}
                                     </div>
-                                  </button>
-                                );
-                              })}
+                                    <div className="flex flex-col">
+                                      <span className="font-extrabold text-sm leading-tight text-slate-800">{student.name}</span>
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                                        Class <span className="text-emerald-700 font-extrabold">{student.class}</span>
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${
+                                    isChecked ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 bg-white'
+                                  }`}>
+                                    {isChecked && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                                  </div>
+                                </button>
+                              );
+                            })}
 
-                              {allocatedRoomStudents.length === 0 && (
-                                <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400 font-bold text-xs">
-                                  No students allocated to {selectedRoom}.
-                                </div>
-                              )}
-                            </div>
+                            {allocatedRoomStudents.length === 0 && (
+                              <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400 font-bold text-xs">
+                                No students allocated to {selectedRoom}.
+                              </div>
+                            )}
+                          </div>
+
+                          {/* BOTTOM FIXED BAR: Compact side-by-side Tally & Fine action buttons fixed at the bottom */}
+                          <div className="absolute bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-md border-t border-slate-200 flex items-center gap-3 z-20 shadow-lg">
+                            {/* 1. TALLY BUTTON */}
+                            <button
+                              onClick={() => {
+                                if (selectedCount === 0) {
+                                  alert('Please select at least one student from the room first!');
+                                  return;
+                                }
+                                setRoomTallyCount(1);
+                                setRoomTallyReason('Room untidy');
+                                setShowRoomTallyModal(true);
+                              }}
+                              className="flex-1 py-3 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl font-extrabold text-xs shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 min-h-[44px]"
+                            >
+                              <Award className="w-4 h-4 shrink-0" />
+                              <span className="truncate">1. Tally ({selectedCount})</span>
+                            </button>
+
+                            {/* 2. FINE BUTTON */}
+                            <button
+                              onClick={() => {
+                                if (selectedCount === 0) {
+                                  alert('Please select at least one student from the room first!');
+                                  return;
+                                }
+                                setRoomFineAmount('50');
+                                setRoomFineReason('Room untidy / Disturbance');
+                                setShowRoomFineModal(true);
+                              }}
+                              className="flex-1 py-3 px-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-xl font-extrabold text-xs shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2 min-h-[44px]"
+                            >
+                              <AlertTriangle className="w-4 h-4 shrink-0" />
+                              <span className="truncate">2. Fine ({selectedCount})</span>
+                            </button>
                           </div>
                         </div>
                       );
@@ -6898,13 +6894,20 @@ Fine Amount: ${amount}`;
             </div>
             <div className="p-5 flex flex-col gap-4">
               <p className="text-xs text-slate-500 font-medium leading-relaxed">
-                Review the tally summary before sending it via WhatsApp:
+                Review the tally summary before downloading or sending via WhatsApp:
               </p>
-              <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs font-mono text-slate-700 whitespace-pre-wrap h-40 overflow-y-auto">
+              <div id="whatsapp-summary-card" className="bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs font-mono text-slate-700 whitespace-pre-wrap h-48 overflow-y-auto shadow-inner">
                 {whatsappMessage}
               </div>
               
-              <div className="pt-2">
+              <div className="pt-2 flex flex-col sm:flex-row gap-2">
+                <button
+                  onClick={() => handleDownloadScreenshotCard('whatsapp-summary-card', 'Summary_Report.png')}
+                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-extrabold text-xs shadow-md transition-colors active:scale-[0.98] flex justify-center items-center gap-2 min-h-[44px]"
+                >
+                  <Camera className="w-4 h-4" />
+                  Screenshot
+                </button>
                 <a
                   href={`https://wa.me/?text=${encodeURIComponent(whatsappMessage)}`}
                   target="_blank"
@@ -6916,10 +6919,10 @@ Fine Amount: ${amount}`;
                     setPerformanceView(null);
                     setPerformanceSubmitData({ count: 1, reason: '', type: 'tally' });
                   }}
-                  className="w-full py-3 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-extrabold text-xs shadow-md transition-colors active:scale-[0.98] flex justify-center items-center gap-2"
+                  className="flex-1 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-extrabold text-xs shadow-md transition-colors active:scale-[0.98] flex justify-center items-center gap-2 min-h-[44px]"
                 >
                   <MessageSquare className="w-4 h-4" />
-                  Send to WhatsApp
+                  WhatsApp
                 </a>
               </div>
             </div>
@@ -7314,13 +7317,45 @@ Fine Amount: ${amount}`;
                     students.filter(s => String(s.room || s.roomNumber || '').trim() === currentRoomKey);
                   const selectedObjs = allocated.filter(s => performanceSelectedStudents.includes(s.id));
                   
+                  const amount = Number(roomTallyCount) || 1;
+                  const reason = roomTallyReason || 'Room Tally';
+
+                  let studentsToUpsert = [];
+                  const updatedStudents = students.map(s => {
+                    const isMatchingSelected = selectedObjs.some(so => 
+                      so.id === s.id || (so.name.toLowerCase() === s.name.toLowerCase() && so.class.toLowerCase() === (s.class || '').toLowerCase())
+                    );
+                    if (isMatchingSelected) {
+                      const updated = {
+                        ...s,
+                        tally: (s.tally || 0) + amount,
+                        neatAndOrderTally: (s.neatAndOrderTally || 0) + amount,
+                        neatAndOrderIncidents: (s.neatAndOrderIncidents || 0) + 1,
+                        neatAndOrderReason: reason || s.neatAndOrderReason
+                      };
+                      logHistory(s.id, 'N&O Tally', amount, reason);
+                      studentsToUpsert.push(updated);
+                      return updated;
+                    }
+                    return s;
+                  });
+
+                  if (studentsToUpsert.length > 0) {
+                    setStudents(updatedStudents);
+                    fetch('/api/students/bulk-upsert', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ students: studentsToUpsert })
+                    }).catch(err => console.error("Error bulk upserting room tally:", err));
+                  }
+
                   const now = new Date();
                   const summary = {
                     date: now.toLocaleDateString('en-GB'),
                     time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     room: `${selectedHostel} • ${selectedRoom}`,
-                    tallyNumber: roomTallyCount,
-                    reason: roomTallyReason || 'Room Tally',
+                    tallyNumber: amount,
+                    reason: reason,
                     students: selectedObjs
                   };
                   
@@ -7338,49 +7373,58 @@ Fine Amount: ${amount}`;
 
       {/* ROOM TALLY SUMMARY MODAL */}
       {roomTallySummary && (
-        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center p-4 z-[130] animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 rounded-2xl text-white text-center shadow-md">
-              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-200 block">Performance Summary</span>
-              <h3 className="text-xl font-black uppercase mt-0.5">ROOM TALLY ENTRY</h3>
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[130] animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-5 sm:p-6 gap-4 sm:gap-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div id="room-tally-summary-card" className="flex flex-col gap-4 bg-white p-3 rounded-2xl border border-slate-100">
+              <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 rounded-2xl text-white text-center shadow-md">
+                <span className="text-[10px] font-black uppercase tracking-widest text-emerald-200 block">Performance Summary</span>
+                <h3 className="text-xl font-black uppercase mt-0.5">ROOM TALLY ENTRY</h3>
+              </div>
+
+              <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-xs">
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="font-bold text-slate-500">Date:</span>
+                  <span className="font-extrabold text-slate-800">{roomTallySummary.date}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="font-bold text-slate-500">Time:</span>
+                  <span className="font-extrabold text-slate-800">{roomTallySummary.time}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="font-bold text-slate-500">Room:</span>
+                  <span className="font-extrabold text-emerald-700">{roomTallySummary.room}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="font-bold text-slate-500">Tally Number:</span>
+                  <span className="font-black text-emerald-600 text-sm">{roomTallySummary.tallyNumber}</span>
+                </div>
+                <div className="flex justify-between pb-1">
+                  <span className="font-bold text-slate-500">Reason:</span>
+                  <span className="font-extrabold text-slate-800 text-right">{roomTallySummary.reason}</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2">Allocated Students</span>
+                <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                  {roomTallySummary.students.map((s, idx) => (
+                    <div key={s.id || idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-800">{idx + 1}. {s.name}</span>
+                      <span className="font-black text-emerald-700 text-[10px] bg-emerald-100 px-2 py-0.5 rounded-md">Class {s.class}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-xs">
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span className="font-bold text-slate-500">Date:</span>
-                <span className="font-extrabold text-slate-800">{roomTallySummary.date}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span className="font-bold text-slate-500">Time:</span>
-                <span className="font-extrabold text-slate-800">{roomTallySummary.time}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span className="font-bold text-slate-500">Room:</span>
-                <span className="font-extrabold text-emerald-700">{roomTallySummary.room}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span className="font-bold text-slate-500">Tally Number:</span>
-                <span className="font-black text-emerald-600 text-sm">{roomTallySummary.tallyNumber}</span>
-              </div>
-              <div className="flex justify-between pb-1">
-                <span className="font-bold text-slate-500">Reason:</span>
-                <span className="font-extrabold text-slate-800 text-right">{roomTallySummary.reason}</span>
-              </div>
-            </div>
-
-            <div>
-              <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2">Allocated Students</span>
-              <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
-                {roomTallySummary.students.map((s, idx) => (
-                  <div key={s.id || idx} className="p-2.5 bg-white border border-slate-200 rounded-xl flex justify-between items-center text-xs">
-                    <span className="font-bold text-slate-800">{idx + 1}. {s.name}</span>
-                    <span className="font-black text-emerald-700 text-[10px] bg-emerald-50 px-2 py-0.5 rounded-md">Class {s.class}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-2">
+              <button
+                onClick={() => handleDownloadScreenshotCard('room-tally-summary-card', `Room_Tally_${roomTallySummary.room}.png`)}
+                className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 min-h-[44px]"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Download Screenshot</span>
+              </button>
               <button
                 onClick={() => {
                   const studentListStr = roomTallySummary.students.map((s, i) => `${i + 1}. ${s.name} (${s.class})`).join('\n');
@@ -7394,13 +7438,13 @@ Fine Amount: ${amount}`;
                   
                   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
                 }}
-                className="flex-1 py-3.5 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 min-h-[44px]"
               >
-                Share WhatsApp
+                <span>Share WhatsApp</span>
               </button>
               <button
                 onClick={() => setRoomTallySummary(null)}
-                className="py-3.5 px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+                className="py-3 px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors min-h-[44px]"
               >
                 RETURN
               </button>
@@ -7464,13 +7508,43 @@ Fine Amount: ${amount}`;
                     students.filter(s => String(s.room || s.roomNumber || '').trim() === currentRoomKey);
                   const selectedObjs = allocated.filter(s => performanceSelectedStudents.includes(s.id));
                   
+                  const fineAmt = Number(roomFineAmount) || 0;
+                  const reason = roomFineReason || 'Room Fine Violation';
+
+                  let studentsToUpsert = [];
+                  const updatedStudents = students.map(s => {
+                    const isMatchingSelected = selectedObjs.some(so => 
+                      so.id === s.id || (so.name.toLowerCase() === s.name.toLowerCase() && so.class.toLowerCase() === (s.class || '').toLowerCase())
+                    );
+                    if (isMatchingSelected) {
+                      const updated = {
+                        ...s,
+                        spotFine: (s.spotFine || 0) + fineAmt,
+                        spotFineReason: reason || s.spotFineReason
+                      };
+                      logHistory(s.id, 'Spot Fine', fineAmt, reason);
+                      studentsToUpsert.push(updated);
+                      return updated;
+                    }
+                    return s;
+                  });
+
+                  if (studentsToUpsert.length > 0) {
+                    setStudents(updatedStudents);
+                    fetch('/api/students/bulk-upsert', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ students: studentsToUpsert })
+                    }).catch(err => console.error("Error bulk upserting room fine:", err));
+                  }
+
                   const now = new Date();
                   const summary = {
                     date: now.toLocaleDateString('en-GB'),
                     time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                     room: `${selectedHostel} • ${selectedRoom}`,
-                    amount: roomFineAmount || '0',
-                    reason: roomFineReason || 'Room Fine Violation',
+                    amount: fineAmt,
+                    reason: reason,
                     students: selectedObjs
                   };
                   
@@ -7488,49 +7562,58 @@ Fine Amount: ${amount}`;
 
       {/* ROOM FINE SUMMARY MODAL */}
       {roomFineSummary && (
-        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center p-4 z-[130] animate-fade-in">
-          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
-            <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 rounded-2xl text-white text-center shadow-md">
-              <span className="text-[10px] font-black uppercase tracking-widest text-amber-100 block">Performance Summary</span>
-              <h3 className="text-xl font-black uppercase mt-0.5">ROOM FINE ENTRY</h3>
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[130] animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-5 sm:p-6 gap-4 sm:gap-5 max-h-[90vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div id="room-fine-summary-card" className="flex flex-col gap-4 bg-white p-3 rounded-2xl border border-slate-100">
+              <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 rounded-2xl text-white text-center shadow-md">
+                <span className="text-[10px] font-black uppercase tracking-widest text-amber-100 block">Performance Summary</span>
+                <h3 className="text-xl font-black uppercase mt-0.5">ROOM FINE ENTRY</h3>
+              </div>
+
+              <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-xs">
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="font-bold text-slate-500">Date:</span>
+                  <span className="font-extrabold text-slate-800">{roomFineSummary.date}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="font-bold text-slate-500">Time:</span>
+                  <span className="font-extrabold text-slate-800">{roomFineSummary.time}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="font-bold text-slate-500">Room:</span>
+                  <span className="font-extrabold text-amber-700">{roomFineSummary.room}</span>
+                </div>
+                <div className="flex justify-between border-b border-slate-200 pb-2">
+                  <span className="font-bold text-slate-500">Fine Amount:</span>
+                  <span className="font-black text-amber-600 text-sm">₹{roomFineSummary.amount}</span>
+                </div>
+                <div className="flex justify-between pb-1">
+                  <span className="font-bold text-slate-500">Reason:</span>
+                  <span className="font-extrabold text-slate-800 text-right">{roomFineSummary.reason}</span>
+                </div>
+              </div>
+
+              <div>
+                <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2">Allocated Students</span>
+                <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                  {roomFineSummary.students.map((s, idx) => (
+                    <div key={s.id || idx} className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center text-xs">
+                      <span className="font-bold text-slate-800">{idx + 1}. {s.name}</span>
+                      <span className="font-black text-amber-700 text-[10px] bg-amber-100 px-2 py-0.5 rounded-md">Class {s.class}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
 
-            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-xs">
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span className="font-bold text-slate-500">Date:</span>
-                <span className="font-extrabold text-slate-800">{roomFineSummary.date}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span className="font-bold text-slate-500">Time:</span>
-                <span className="font-extrabold text-slate-800">{roomFineSummary.time}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span className="font-bold text-slate-500">Room:</span>
-                <span className="font-extrabold text-amber-700">{roomFineSummary.room}</span>
-              </div>
-              <div className="flex justify-between border-b border-slate-200 pb-2">
-                <span className="font-bold text-slate-500">Fine Amount:</span>
-                <span className="font-black text-amber-600 text-sm">₹{roomFineSummary.amount}</span>
-              </div>
-              <div className="flex justify-between pb-1">
-                <span className="font-bold text-slate-500">Reason:</span>
-                <span className="font-extrabold text-slate-800 text-right">{roomFineSummary.reason}</span>
-              </div>
-            </div>
-
-            <div>
-              <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2">Allocated Students</span>
-              <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
-                {roomFineSummary.students.map((s, idx) => (
-                  <div key={s.id || idx} className="p-2.5 bg-white border border-slate-200 rounded-xl flex justify-between items-center text-xs">
-                    <span className="font-bold text-slate-800">{idx + 1}. {s.name}</span>
-                    <span className="font-black text-amber-700 text-[10px] bg-amber-50 px-2 py-0.5 rounded-md">Class {s.class}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3 pt-2">
+              <button
+                onClick={() => handleDownloadScreenshotCard('room-fine-summary-card', `Room_Fine_${roomFineSummary.room}.png`)}
+                className="flex-1 py-3 bg-amber-600 hover:bg-amber-700 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 min-h-[44px]"
+              >
+                <Camera className="w-4 h-4" />
+                <span>Download Screenshot</span>
+              </button>
               <button
                 onClick={() => {
                   const studentListStr = roomFineSummary.students.map((s, i) => `${i + 1}. ${s.name} (${s.class})`).join('\n');
@@ -7544,13 +7627,13 @@ Fine Amount: ${amount}`;
                   
                   window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
                 }}
-                className="flex-1 py-3.5 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2 min-h-[44px]"
               >
-                Share WhatsApp
+                <span>Share WhatsApp</span>
               </button>
               <button
                 onClick={() => setRoomFineSummary(null)}
-                className="py-3.5 px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+                className="py-3 px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors min-h-[44px]"
               >
                 BACK
               </button>

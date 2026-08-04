@@ -139,3 +139,28 @@ input[type="number"] {
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
+
+/* Mobile Touch & Screenshot Export Styling */
+.mobile-card-export {
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2);
+  border-radius: 24px;
+}
+
+@media (max-width: 640px) {
+  /* Prevent horizontal scroll on mobile viewport */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Touch target sizes */
+  button, input, select {
+    min-height: 40px;
+  }
+
+  .mobile-full-modal {
+    width: 95% !important;
+    max-height: 90vh !important;
+    margin: auto !important;
+  }
+}
+
