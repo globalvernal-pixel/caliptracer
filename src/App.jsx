@@ -392,6 +392,14 @@ export default function App() {
     setShowDeleteMentorModal(false);
   };
   const [performanceView, setPerformanceView] = useState(null); // 'neat', 'room', 'ineligible', null
+  const [selectedHostel, setSelectedHostel] = useState(null); // 'MAIN BLOCK BOYS', 'NEW BLOCK BOYS', 'MAIN BLOCK GIRLS', 'NEW BLOCK GIRLS'
+  const [selectedRoom, setSelectedRoom] = useState(null); // 'Room 1' .. 'Room 25'
+  const HOSTEL_BLOCKS = [
+    { id: 1, name: 'MAIN BLOCK BOYS', icon: '👦', desc: 'Main Boys Hostel' },
+    { id: 2, name: 'NEW BLOCK BOYS', icon: '🏢', desc: 'New Boys Hostel' },
+    { id: 3, name: 'MAIN BLOCK GIRLS', icon: '👧', desc: 'Main Girls Hostel' },
+    { id: 4, name: 'NEW BLOCK GIRLS', icon: '🏠', desc: 'New Girls Hostel' }
+  ];
   const [performanceSelectedClass, setPerformanceSelectedClass] = useState(null);
   const [performanceSelectedStudents, setPerformanceSelectedStudents] = useState([]);
   const [showPerformanceSubmitModal, setShowPerformanceSubmitModal] = useState(false);
@@ -3933,7 +3941,7 @@ Fine Amount: ${amount}`;
 
                   {/* Room */}
                   <button 
-                    onClick={() => { setPerformanceView('room'); setPerformanceSelectedClass(null); setPerformanceSelectedStudents([]); }}
+                    onClick={() => { setPerformanceView('room'); setSelectedHostel(null); setSelectedRoom(null); setPerformanceSelectedClass(null); setPerformanceSelectedStudents([]); }}
                     className="group relative flex flex-col items-center justify-center p-5 bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md hover:border-emerald-300 transition-all duration-200 active:scale-95 text-center"
                   >
                     <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600 mb-3 group-hover:scale-110 group-hover:bg-emerald-100 transition-all duration-300">
@@ -4026,16 +4034,28 @@ Fine Amount: ${amount}`;
                 <div className="p-4 bg-white border-b border-slate-200 shadow-sm shrink-0 flex items-center gap-3">
                   <button 
                     onClick={() => {
-                      if (performanceSelectedClass) setPerformanceSelectedClass(null);
-                      else if (performanceView && performanceView.startsWith('sheets_')) setPerformanceView('sheets');
-                      else setPerformanceView(null);
+                      if (performanceSelectedStudents.length > 0) {
+                        setPerformanceSelectedStudents([]);
+                      } else if (performanceView === 'room' && selectedRoom) {
+                        setSelectedRoom(null);
+                      } else if (performanceView === 'room' && selectedHostel) {
+                        setSelectedHostel(null);
+                      } else if (performanceSelectedClass) {
+                        setPerformanceSelectedClass(null);
+                      } else if (performanceView && performanceView.startsWith('sheets_')) {
+                        setPerformanceView('sheets');
+                      } else {
+                        setPerformanceView(null);
+                        setSelectedHostel(null);
+                        setSelectedRoom(null);
+                      }
                     }}
                     className="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors text-[#1A365D]"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
                   <h2 className="text-[#1A365D] font-extrabold tracking-wider uppercase text-sm">
-                    {performanceView === 'neat' ? 'Neat and Order' : performanceView === 'room' ? 'Room' : performanceView === 'spot' ? 'Spot Fine' : performanceView === 'program' ? 'Program Star' : performanceView === 'ineligible' ? 'Ineligible' : performanceView === 'sheets' ? 'Sheets' : performanceView === 'sheets_black' ? 'Black Sheet' : performanceView === 'sheets_yellow' ? 'Yellow Sheet' : performanceView === 'sheets_apology' ? 'Apology Sheet' : performanceView === 'morning_bliss' ? 'Morning Bliss' : performanceView === 'morning_bliss_results' ? 'Morning Bliss Results' : performanceView === 'summary' ? 'Summary' : ''}
+                    {performanceView === 'neat' ? 'Neat and Order' : performanceView === 'room' ? (selectedRoom ? `Room - ${selectedHostel} (${selectedRoom})` : selectedHostel ? `Room - ${selectedHostel}` : 'Hostel Rooms') : performanceView === 'spot' ? 'Spot Fine' : performanceView === 'program' ? 'Program Star' : performanceView === 'ineligible' ? 'Ineligible' : performanceView === 'sheets' ? 'Sheets' : performanceView === 'sheets_black' ? 'Black Sheet' : performanceView === 'sheets_yellow' ? 'Yellow Sheet' : performanceView === 'sheets_apology' ? 'Apology Sheet' : performanceView === 'morning_bliss' ? 'Morning Bliss' : performanceView === 'morning_bliss_results' ? 'Morning Bliss Results' : performanceView === 'summary' ? 'Summary' : ''}
                     {performanceSelectedClass ? ` - Class ${performanceSelectedClass}` : ''}
                   </h2>
                 </div>
@@ -4736,6 +4756,129 @@ Fine Amount: ${amount}`;
                         </button>
                     </form>
                   </div>
+                ) : performanceView === 'room' ? (
+                  !selectedHostel ? (
+                    /* STEP 1: Show 4 Hostel Buttons */
+                    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                      <div className="text-center mb-1">
+                        <h3 className="text-[#1A365D] font-extrabold text-lg tracking-tight">Select Hostel Block</h3>
+                        <p className="text-slate-500 text-xs mt-0.5 font-medium">Choose a hostel to view room list</p>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 max-w-lg mx-auto w-full">
+                        {HOSTEL_BLOCKS.map(h => (
+                          <button
+                            key={h.id}
+                            onClick={() => {
+                              setSelectedHostel(h.name);
+                              setSelectedRoom(null);
+                            }}
+                            className="p-5 bg-white border border-slate-200 hover:border-[#1A365D] rounded-2xl shadow-sm hover:shadow-md transition-all active:scale-[0.98] flex items-center justify-between group text-left"
+                          >
+                            <div className="flex items-center gap-3.5">
+                              <div className="w-12 h-12 rounded-2xl bg-slate-100 group-hover:bg-[#1A365D] group-hover:text-white text-2xl flex items-center justify-center transition-colors">
+                                {h.icon}
+                              </div>
+                              <div>
+                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Hostel {h.id}</span>
+                                <span className="font-extrabold text-sm text-[#1A365D] uppercase tracking-wide">{h.name}</span>
+                              </div>
+                            </div>
+                            <ChevronRight className="w-5 h-5 text-slate-400 group-hover:text-[#1A365D] group-hover:translate-x-1 transition-all" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : !selectedRoom ? (
+                    /* STEP 2: Show 25 Room Buttons for Selected Hostel */
+                    <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                      <div className="flex items-center justify-between bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm shrink-0">
+                        <div>
+                          <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">{selectedHostel}</span>
+                          <h3 className="text-[#1A365D] font-extrabold text-base">Select Room (25 Rooms)</h3>
+                        </div>
+                        <button
+                          onClick={() => setSelectedHostel(null)}
+                          className="text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors"
+                        >
+                          Change Hostel
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                        {Array.from({ length: 25 }, (_, i) => i + 1).map(num => (
+                          <button
+                            key={num}
+                            onClick={() => {
+                              setSelectedRoom(`Room ${num}`);
+                              setPerformanceSelectedStudents([]);
+                            }}
+                            className="p-4 bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 rounded-2xl shadow-sm hover:shadow transition-all active:scale-[0.96] flex flex-col items-center justify-center gap-1.5 group"
+                          >
+                            <div className="w-9 h-9 rounded-xl bg-slate-100 group-hover:bg-emerald-600 text-slate-600 group-hover:text-white flex items-center justify-center transition-colors">
+                              <School className="w-5 h-5" />
+                            </div>
+                            <span className="font-extrabold text-xs text-slate-800 group-hover:text-emerald-700">Room {num}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    /* STEP 3: Student Selection inside Selected Room */
+                    <div className="flex-1 overflow-hidden flex flex-col">
+                      <div className="p-3 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-2">
+                          <School className="w-4 h-4 text-emerald-600" />
+                          <span className="font-extrabold text-xs text-emerald-900 uppercase">
+                            {selectedHostel} • {selectedRoom}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => setSelectedRoom(null)}
+                          className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline"
+                        >
+                          Change Room
+                        </button>
+                      </div>
+                      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
+                        {students.map(student => (
+                          <button
+                            key={student.id}
+                            onClick={() => {
+                              setPerformanceSelectedStudents(prev => 
+                                prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id]
+                              );
+                            }}
+                            className={`p-3 border rounded-xl flex items-center justify-between transition-colors ${
+                              performanceSelectedStudents.includes(student.id)
+                                ? 'bg-[#1A365D]/10 border-[#1A365D] text-[#1A365D]'
+                                : 'bg-white border-slate-200 text-slate-700 hover:border-[#1A365D]/50'
+                            }`}
+                          >
+                            <div className="flex flex-col text-left">
+                              <span className="font-bold text-sm">{student.name}</span>
+                              <span className="text-[10px] font-semibold text-slate-400 uppercase">Class {student.class}</span>
+                            </div>
+                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
+                              performanceSelectedStudents.includes(student.id) ? 'bg-[#1A365D] border-[#1A365D]' : 'border-slate-300'
+                            }`}>
+                              {performanceSelectedStudents.includes(student.id) && <Check className="w-3 h-3 text-white" />}
+                            </div>
+                          </button>
+                        ))}
+                        {students.length === 0 && (
+                          <div className="p-6 text-center text-slate-400 font-bold text-sm">No students available.</div>
+                        )}
+                      </div>
+                      <div className="p-4 bg-white border-t border-slate-200 shrink-0">
+                        <button
+                          onClick={() => setShowPerformanceSubmitModal(true)}
+                          disabled={performanceSelectedStudents.length === 0}
+                          className="w-full py-3.5 px-4 bg-[#1A365D] hover:bg-[#2A4365] disabled:bg-slate-300 text-white rounded-xl font-extrabold text-sm shadow-md transition-colors active:scale-[0.98]"
+                        >
+                          Submit Selected ({performanceSelectedStudents.length})
+                        </button>
+                      </div>
+                    </div>
+                  )
                 ) : !performanceSelectedClass ? (
                   <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
                     {visibleClasses.map(cls => (
