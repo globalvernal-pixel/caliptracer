@@ -4789,12 +4789,12 @@ Fine Amount: ${amount}`;
                       </div>
                     </div>
                   ) : !selectedRoom ? (
-                    /* STEP 2: Show 25 Room Buttons for Selected Hostel */
+                    /* STEP 2: Show Room Buttons for Selected Hostel */
                     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
                       <div className="flex items-center justify-between bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm shrink-0">
                         <div>
                           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">{selectedHostel}</span>
-                          <h3 className="text-[#1A365D] font-extrabold text-base">Select Room (25 Rooms)</h3>
+                          <h3 className="text-[#1A365D] font-extrabold text-base">Select Room ({[19, 20, 21, 22, 123, 124, 125, 126, 127, 128, 107, 108, 109, 110, 214, 215, 216, 217, 230, 231, 232, 233, 234, 235].length} Rooms)</h3>
                         </div>
                         <button
                           onClick={() => setSelectedHostel(null)}
@@ -4804,7 +4804,7 @@ Fine Amount: ${amount}`;
                         </button>
                       </div>
                       <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                        {Array.from({ length: 25 }, (_, i) => i + 1).map(num => (
+                        {[19, 20, 21, 22, 123, 124, 125, 126, 127, 128, 107, 108, 109, 110, 214, 215, 216, 217, 230, 231, 232, 233, 234, 235].map(num => (
                           <button
                             key={num}
                             onClick={() => {
