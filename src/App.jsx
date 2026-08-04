@@ -79,6 +79,176 @@ const PREDEFINED_NEAT_REASONS = [
   { reason: 'Shoe', count: 10 }
 ];
 
+const ROOM_STUDENT_MAPPING = {
+  '19': [
+    { id: 'r19-1', name: 'MUHAMMED UNAIS', class: 'S1B' },
+    { id: 'r19-2', name: 'MUHAMMED SHAMMAS', class: 'C1B' },
+    { id: 'r19-3', name: 'MUHAMMED HADIN FARHAN', class: 'C1B' },
+    { id: 'r19-4', name: 'AHAMMAD SHADHIL', class: 'C1B' },
+    { id: 'r19-5', name: 'IJLAN THOTUNGAL', class: 'C1B' },
+    { id: 'r19-6', name: 'MUHAMMED HAMMAZ', class: 'C1B' }
+  ],
+  '20': [
+    { id: 'r20-1', name: 'ABDULLAMUZAMMIL', class: 'S1B' },
+    { id: 'r20-2', name: 'ABDULHADHI S.S', class: 'S1B' },
+    { id: 'r20-3', name: 'MUHAMMED NIHAL B', class: 'C1B' },
+    { id: 'r20-4', name: 'ABDUL SAMAD CA', class: 'C1C' },
+    { id: 'r20-5', name: 'MOHAMMED MUJTHABA', class: 'C1C' },
+    { id: 'r20-6', name: 'ZAINUL ABIDHEEN', class: 'C1C' }
+  ],
+  '21': [
+    { id: 'r21-1', name: 'REYHAN ANEES', class: 'S2B' },
+    { id: 'r21-2', name: 'SHAHIR O', class: 'S2B' },
+    { id: 'r21-3', name: 'DILHAQ HASSAN', class: 'S2B' },
+    { id: 'r21-4', name: 'MUHAMMED IMRAN', class: 'S2B' },
+    { id: 'r21-5', name: 'MUHAMMED P', class: 'C2B' },
+    { id: 'r21-6', name: 'MUHAMMED FARHAN', class: 'C2B' },
+    { id: 'r21-7', name: 'MUHAMMED FADHIL RN', class: 'C2B' },
+    { id: 'r21-8', name: 'MUHAMMED YOUSUF', class: 'C2B' }
+  ],
+  '22': [
+    { id: 'r22-1', name: 'MUHAMMED MUJTHABA', class: 'S1B' },
+    { id: 'r22-2', name: 'HASHIN EH', class: 'C1B' },
+    { id: 'r22-3', name: 'FAIHAN FIROZ', class: 'S1B' },
+    { id: 'r22-4', name: 'MUHAMMED FAAZ KP', class: 'C1B' },
+    { id: 'r22-5', name: 'ALI MIYAN', class: 'C1B' },
+    { id: 'r22-6', name: 'MUHAMMED HASHIM', class: 'C1C' },
+    { id: 'r22-7', name: 'SHAMMAS ASLAM', class: 'C1B' }
+  ],
+  '124': [
+    { id: 'r124-1', name: 'MINHAJ', class: 'S2B' },
+    { id: 'r124-2', name: 'SHAHAN SHABEEB', class: 'S2B' },
+    { id: 'r124-3', name: 'MAHDI MUHAMMED', class: 'S2B' },
+    { id: 'r124-4', name: 'MUHAMMED SAHAL T', class: 'S2B' },
+    { id: 'r124-5', name: 'MUFTI MUHAMMED', class: 'C2B' },
+    { id: 'r124-6', name: 'AMAAN MOHAMMED RAFHEEK', class: 'C2B' }
+  ],
+  '125': [
+    { id: 'r125-1', name: 'MUHAMMED NIHAL PB', class: 'S1B' },
+    { id: 'r125-2', name: 'MOHAMMED FADI KT', class: 'S1B' },
+    { id: 'r125-3', name: 'SAVAD M', class: 'C1B' },
+    { id: 'r125-4', name: 'ABDUL HADHI K.S', class: 'C1B' },
+    { id: 'r125-5', name: 'MUHAMMED HANAN MATTAI', class: 'C1B' },
+    { id: 'r125-6', name: 'FAVAS M', class: 'C1C' }
+  ],
+  '126': [
+    { id: 'r126-1', name: 'MOHAMMED NIHAL KP', class: 'S1B' },
+    { id: 'r126-2', name: 'MUHAMMED SHEZIN SADIKH', class: 'S1B' },
+    { id: 'r126-3', name: 'AYAZ MUHAMMED', class: 'C1B' },
+    { id: 'r126-4', name: 'MUHAMMED MUNAZIR', class: 'C1C' },
+    { id: 'r126-5', name: 'ADHIL HANAN', class: 'C1C' },
+    { id: 'r126-6', name: 'SAHL ABDULLA', class: 'C1C' }
+  ],
+  '127': [
+    { id: 'r127-1', name: 'RIZAN MUHAMMED', class: 'S1B' },
+    { id: 'r127-2', name: 'SHABIL ASHRAF M K', class: 'S1B' },
+    { id: 'r127-3', name: 'MUHAMMED ATHIF', class: 'C1C' },
+    { id: 'r127-4', name: 'MUHAMMED YOUNUS', class: 'C1C' },
+    { id: 'r127-5', name: 'MUHAMMED AMEEN ASHFAQ', class: 'C1C' },
+    { id: 'r127-6', name: 'SHAZIN NOUSHAD', class: 'C1B' }
+  ],
+  '128': [
+    { id: 'r128-1', name: 'AYAAN MOHAMMAD', class: 'S1B' },
+    { id: 'r128-2', name: 'AHMED SAHL SAJID', class: 'S1B' },
+    { id: 'r128-3', name: 'MUHAMMED MISHAL', class: 'C1C' },
+    { id: 'r128-4', name: 'RAMIN MUHAMMED', class: 'C1C' },
+    { id: 'r128-5', name: 'MUHAMMED NADUVILOTHI', class: 'C1C' },
+    { id: 'r128-6', name: 'SHEZIN HAMDAN', class: 'C1B' }
+  ],
+  '108': [
+    { id: 'r108-1', name: 'MUHAMMED NIHAD K', class: 'S1B' },
+    { id: 'r108-2', name: 'AHLAN K', class: 'S1B' },
+    { id: 'r108-3', name: 'MUHAMMED ABAAN', class: 'C1C' },
+    { id: 'r108-4', name: 'MUADDAB KODAMBI', class: 'C1B' },
+    { id: 'r108-5', name: 'HUMAYL MUHAMMED', class: 'C1B' },
+    { id: 'r108-6', name: 'ABDULLAH WAIZ.N.P', class: 'C1B' }
+  ],
+  '109': [
+    { id: 'r109-1', name: 'SAHIL MOHAMMED SAHEER', class: 'S1B' },
+    { id: 'r109-2', name: 'HADI MUHAMMAD', class: 'S1B' },
+    { id: 'r109-3', name: 'AMAN ABDULLA KT', class: 'C1B' },
+    { id: 'r109-4', name: 'MUHAMMED FADHIL', class: 'C1B' },
+    { id: 'r109-5', name: 'MOHAMMED', class: 'C1C' },
+    { id: 'r109-6', name: 'RAFAN MUHAMMED', class: 'C1C' }
+  ],
+  '110': [
+    { id: 'r110-1', name: 'HAANI MUAAD', class: 'S1B' },
+    { id: 'r110-2', name: 'AMAN USMAN', class: 'S1B' },
+    { id: 'r110-3', name: 'JAZEEM HANEEFA', class: 'C1B' },
+    { id: 'r110-4', name: 'AHMAD MUNEER', class: 'C1B' },
+    { id: 'r110-5', name: 'FAID SANEEN', class: 'C1B' },
+    { id: 'r110-6', name: 'REHAN MUHAMMED SAHIR', class: 'C1C' }
+  ],
+  '215': [
+    { id: 'r215-1', name: 'HAROON RASHEED', class: 'S1B' },
+    { id: 'r215-2', name: 'HADI MUHAMMED E P', class: 'S1B' },
+    { id: 'r215-3', name: 'AZMI MUHAMMED ASLAM', class: 'C1C' },
+    { id: 'r215-4', name: 'RADIN T', class: 'C1C' },
+    { id: 'r215-5', name: 'FADHIL ANWAR BASHEER', class: 'C1C' },
+    { id: 'r215-6', name: 'SHAZIN HUSSAIN', class: 'C1C' }
+  ],
+  '216': [
+    { id: 'r216-1', name: 'MOHAMMED AJMAL', class: 'S1B' },
+    { id: 'r216-2', name: 'AHAMMED MAJID', class: 'S1B' },
+    { id: 'r216-3', name: 'FAAZ MUHAMMED PS', class: 'C1B' },
+    { id: 'r216-4', name: 'ZUNNOON P', class: 'C1C' },
+    { id: 'r216-5', name: 'MUHAMMED RASIL MP', class: 'C1C' },
+    { id: 'r216-6', name: 'MUHAMMED AMAN TP', class: 'C1B' }
+  ],
+  '217': [
+    { id: 'r217-1', name: 'MUHAMMED HAMID TK', class: 'S2B' },
+    { id: 'r217-2', name: 'MUHAMMED SWALAH', class: 'S2B' },
+    { id: 'r217-3', name: 'RAZI MUHAMMED VF', class: 'C2B' },
+    { id: 'r217-4', name: 'MUHAMMED MINHAI PC', class: 'C2C' },
+    { id: 'r217-5', name: 'MUHAMMED RASHID T', class: 'C2B' },
+    { id: 'r217-6', name: 'MUHAMMED MUHSIN K', class: 'C2B' }
+  ],
+  '231': [
+    { id: 'r231-1', name: 'MUHAMMED ATHIQ ANZAD', class: 'S1B' },
+    { id: 'r231-2', name: 'MUHAMMED ESHAN P', class: 'S1B' },
+    { id: 'r231-3', name: 'AYAZ JABIR', class: 'C1B' },
+    { id: 'r231-4', name: 'LUQMANUL HAKEEM', class: 'C1C' },
+    { id: 'r231-5', name: 'MUHAMMED YASEEN', class: 'C1C' },
+    { id: 'r231-6', name: 'MUHAMMMED FAAZ', class: 'C1C' }
+  ],
+  '232': [
+    { id: 'r232-1', name: 'ALAN BACKER KP', class: 'C1B' },
+    { id: 'r232-2', name: 'MUHAMMED YASEEN V', class: 'S1B' },
+    { id: 'r232-3', name: 'AMIN RIHAN', class: 'C1C' },
+    { id: 'r232-4', name: 'AZAAN MAHWISH', class: 'C1C' },
+    { id: 'r232-5', name: 'MUHAMMED RASEEM', class: 'C1B' },
+    { id: 'r232-6', name: 'MUHAMMED SIDHAN VP', class: 'C1B' }
+  ],
+  '233': [
+    { id: 'r233-1', name: 'AMEEN PV', class: 'S2B' },
+    { id: 'r233-2', name: 'MUHAMMED HANAN ANSAR', class: 'S2B' },
+    { id: 'r233-3', name: 'MUHAMMMED SHAFEEQ', class: 'S2B' },
+    { id: 'r233-4', name: 'HATHIM ZAMAN', class: 'S2B' },
+    { id: 'r233-5', name: 'ALI SHAMIL', class: 'S2B' },
+    { id: 'r233-6', name: 'AHAMMED YASEEN BIN SHABEER', class: 'C2B' },
+    { id: 'r233-7', name: 'MUHAMMED CP', class: 'C2B' },
+    { id: 'r233-8', name: 'MUHAMMED SINAN KT', class: 'C2B' }
+  ],
+  '234': [
+    { id: 'r234-1', name: 'RAZIN MUHAMMED', class: 'S1B' },
+    { id: 'r234-2', name: 'RISWAN M', class: 'S1B' },
+    { id: 'r234-3', name: 'SIDAN HASSAN', class: 'C1C' },
+    { id: 'r234-4', name: 'MUHAMMED YASEEN MP', class: 'C1C' },
+    { id: 'r234-5', name: 'HANIN AHMED FIZIN', class: 'C1C' },
+    { id: 'r234-6', name: 'MUHAMMED HAZEEN', class: 'C1C' }
+  ],
+  '235': [
+    { id: 'r235-1', name: 'MUHAMMED AFIL', class: 'S2B' },
+    { id: 'r235-2', name: 'IHAN INTHIKAF', class: 'S2B' },
+    { id: 'r235-3', name: 'MUHAMMED IZAN DARVISH', class: 'S2B' },
+    { id: 'r235-4', name: 'IHSAN ABDULLA', class: 'S2B' },
+    { id: 'r235-5', name: 'LABEEB NOUSHAD', class: 'S2B' },
+    { id: 'r235-6', name: 'ATHIF THUFAIL N', class: 'C2C' },
+    { id: 'r235-7', name: 'HAROON ASLAM', class: 'C2C' },
+    { id: 'r235-8', name: 'ZAHI ABOOBACKER VENGAT', class: 'C2C' }
+  ]
+};
+
 // CLASSES array is now managed via state
 
 const parseBulkText = (text, allStudents, currentClass) => {
@@ -407,6 +577,17 @@ export default function App() {
   const [showPerformanceReasonDropdown, setShowPerformanceReasonDropdown] = useState(false);
   const [showWhatsappModal, setShowWhatsappModal] = useState(false);
   const [whatsappMessage, setWhatsappMessage] = useState('');
+  
+  // Room Tally & Fine workflow states
+  const [showRoomTallyModal, setShowRoomTallyModal] = useState(false);
+  const [roomTallyCount, setRoomTallyCount] = useState(1);
+  const [roomTallyReason, setRoomTallyReason] = useState('');
+  const [roomTallySummary, setRoomTallySummary] = useState(null);
+
+  const [showRoomFineModal, setShowRoomFineModal] = useState(false);
+  const [roomFineAmount, setRoomFineAmount] = useState('');
+  const [roomFineReason, setRoomFineReason] = useState('');
+  const [roomFineSummary, setRoomFineSummary] = useState(null);
   
   const [showAddIneligibleModal, setShowAddIneligibleModal] = useState(false);
   const [ineligibleSelectedStudents, setIneligibleSelectedStudents] = useState([]);
@@ -4822,62 +5003,176 @@ Fine Amount: ${amount}`;
                       </div>
                     </div>
                   ) : (
-                    /* STEP 3: Student Selection inside Selected Room */
-                    <div className="flex-1 overflow-hidden flex flex-col">
-                      <div className="p-3 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between shrink-0">
-                        <div className="flex items-center gap-2">
-                          <School className="w-4 h-4 text-emerald-600" />
-                          <span className="font-extrabold text-xs text-emerald-900 uppercase">
-                            {selectedHostel} • {selectedRoom}
-                          </span>
+                    /* STEP 3: Student Selection & Room Actions inside Selected Room */
+                    (() => {
+                      const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
+                      const allocatedRoomStudents = ROOM_STUDENT_MAPPING[currentRoomKey] !== undefined ? 
+                        ROOM_STUDENT_MAPPING[currentRoomKey] : 
+                        students.filter(s => String(s.room || s.roomNumber || '').trim() === currentRoomKey);
+                      
+                      const selectedCount = performanceSelectedStudents.length;
+
+                      return (
+                        <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-50">
+                          {/* Left Panel: Actions (Tally & Fine) */}
+                          <div className="w-full md:w-80 bg-white border-b md:border-b-0 md:border-r border-slate-200 p-4 flex flex-col gap-4 shrink-0 shadow-sm">
+                            <div className="bg-emerald-50 border border-emerald-100 p-3.5 rounded-2xl flex items-center justify-between">
+                              <div className="flex items-center gap-2.5">
+                                <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold">
+                                  <School className="w-5 h-5" />
+                                </div>
+                                <div>
+                                  <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider block">{selectedHostel}</span>
+                                  <h3 className="text-[#1A365D] font-extrabold text-sm uppercase">{selectedRoom}</h3>
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  setSelectedRoom(null);
+                                  setPerformanceSelectedStudents([]);
+                                }}
+                                className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-100/60 hover:bg-emerald-200 px-2.5 py-1 rounded-lg transition-colors"
+                              >
+                                Change
+                              </button>
+                            </div>
+
+                            <div className="flex flex-col gap-3 flex-1 justify-center">
+                              <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Room Actions</div>
+                              
+                              {/* 1. TALLY BUTTON */}
+                              <button
+                                onClick={() => {
+                                  if (selectedCount === 0) {
+                                    alert('Please select at least one student from the room first!');
+                                    return;
+                                  }
+                                  setRoomTallyCount(1);
+                                  setRoomTallyReason('Room untidy');
+                                  setShowRoomTallyModal(true);
+                                }}
+                                className="w-full p-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-2xl font-extrabold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-between group"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                                    <Award className="w-5 h-5 text-white" />
+                                  </div>
+                                  <div className="text-left">
+                                    <div className="font-extrabold text-sm">1. Tally</div>
+                                    <div className="text-[10px] text-emerald-100 font-medium">(N&Order Effect)</div>
+                                  </div>
+                                </div>
+                                <ChevronRight className="w-5 h-5 text-white/70 group-hover:translate-x-1 transition-transform" />
+                              </button>
+
+                              {/* 2. FINE BUTTON */}
+                              <button
+                                onClick={() => {
+                                  if (selectedCount === 0) {
+                                    alert('Please select at least one student from the room first!');
+                                    return;
+                                  }
+                                  setRoomFineAmount('50');
+                                  setRoomFineReason('Room untidy / Disturbance');
+                                  setShowRoomFineModal(true);
+                                }}
+                                className="w-full p-4 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white rounded-2xl font-extrabold text-sm shadow-md hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-between group"
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                                    <AlertTriangle className="w-5 h-5 text-white" />
+                                  </div>
+                                  <div className="text-left">
+                                    <div className="font-extrabold text-sm">2. Fine</div>
+                                    <div className="text-[10px] text-amber-100 font-medium">(Show in Fine)</div>
+                                  </div>
+                                </div>
+                                <ChevronRight className="w-5 h-5 text-white/70 group-hover:translate-x-1 transition-transform" />
+                              </button>
+                            </div>
+
+                            <div className="p-3 bg-slate-100 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                              <span className="font-bold text-slate-600">Selected Students:</span>
+                              <span className="font-black text-emerald-700 bg-white px-2 py-0.5 rounded-lg border border-slate-200 shadow-xs">
+                                {selectedCount} / {allocatedRoomStudents.length}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Right Panel: Allocated Students Checklist */}
+                          <div className="flex-1 overflow-hidden flex flex-col p-4">
+                            <div className="flex items-center justify-between pb-3 mb-2 border-b border-slate-200 shrink-0">
+                              <div>
+                                <h4 className="font-extrabold text-sm text-[#1A365D]">Allocated Students</h4>
+                                <span className="text-[11px] font-semibold text-slate-400">
+                                  {allocatedRoomStudents.length} students in {selectedRoom}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => {
+                                    if (selectedCount === allocatedRoomStudents.length) {
+                                      setPerformanceSelectedStudents([]);
+                                    } else {
+                                      setPerformanceSelectedStudents(allocatedRoomStudents.map(s => s.id));
+                                    }
+                                  }}
+                                  className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors"
+                                >
+                                  {selectedCount === allocatedRoomStudents.length ? 'Deselect All' : 'Select All'}
+                                </button>
+                              </div>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto flex flex-col gap-2.5 pr-1">
+                              {allocatedRoomStudents.map(student => {
+                                const isChecked = performanceSelectedStudents.includes(student.id);
+                                return (
+                                  <button
+                                    key={student.id}
+                                    onClick={() => {
+                                      setPerformanceSelectedStudents(prev =>
+                                        prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id]
+                                      );
+                                    }}
+                                    className={`p-3.5 border rounded-2xl flex items-center justify-between transition-all active:scale-[0.99] text-left shadow-xs ${
+                                      isChecked
+                                        ? 'bg-emerald-50/70 border-emerald-500 text-emerald-950 shadow-sm'
+                                        : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300 hover:bg-slate-50/50'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
+                                        isChecked ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'
+                                      }`}>
+                                        {student.name.charAt(0)}
+                                      </div>
+                                      <div className="flex flex-col">
+                                        <span className="font-extrabold text-sm leading-tight text-slate-800">{student.name}</span>
+                                        <span className="text-[10px] font-bold text-slate-400 uppercase mt-0.5">
+                                          Class <span className="text-emerald-700 font-extrabold">{student.class}</span>
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <div className={`w-5 h-5 rounded-lg border-2 flex items-center justify-center transition-colors ${
+                                      isChecked ? 'bg-emerald-600 border-emerald-600' : 'border-slate-300 bg-white'
+                                    }`}>
+                                      {isChecked && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                                    </div>
+                                  </button>
+                                );
+                              })}
+
+                              {allocatedRoomStudents.length === 0 && (
+                                <div className="p-8 text-center bg-white rounded-2xl border border-dashed border-slate-200 text-slate-400 font-bold text-xs">
+                                  No students allocated to {selectedRoom}.
+                                </div>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <button
-                          onClick={() => setSelectedRoom(null)}
-                          className="text-[11px] font-bold text-emerald-700 hover:text-emerald-900 underline"
-                        >
-                          Change Room
-                        </button>
-                      </div>
-                      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-2">
-                        {students.map(student => (
-                          <button
-                            key={student.id}
-                            onClick={() => {
-                              setPerformanceSelectedStudents(prev => 
-                                prev.includes(student.id) ? prev.filter(id => id !== student.id) : [...prev, student.id]
-                              );
-                            }}
-                            className={`p-3 border rounded-xl flex items-center justify-between transition-colors ${
-                              performanceSelectedStudents.includes(student.id)
-                                ? 'bg-[#1A365D]/10 border-[#1A365D] text-[#1A365D]'
-                                : 'bg-white border-slate-200 text-slate-700 hover:border-[#1A365D]/50'
-                            }`}
-                          >
-                            <div className="flex flex-col text-left">
-                              <span className="font-bold text-sm">{student.name}</span>
-                              <span className="text-[10px] font-semibold text-slate-400 uppercase">Class {student.class}</span>
-                            </div>
-                            <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
-                              performanceSelectedStudents.includes(student.id) ? 'bg-[#1A365D] border-[#1A365D]' : 'border-slate-300'
-                            }`}>
-                              {performanceSelectedStudents.includes(student.id) && <Check className="w-3 h-3 text-white" />}
-                            </div>
-                          </button>
-                        ))}
-                        {students.length === 0 && (
-                          <div className="p-6 text-center text-slate-400 font-bold text-sm">No students available.</div>
-                        )}
-                      </div>
-                      <div className="p-4 bg-white border-t border-slate-200 shrink-0">
-                        <button
-                          onClick={() => setShowPerformanceSubmitModal(true)}
-                          disabled={performanceSelectedStudents.length === 0}
-                          className="w-full py-3.5 px-4 bg-[#1A365D] hover:bg-[#2A4365] disabled:bg-slate-300 text-white rounded-xl font-extrabold text-sm shadow-md transition-colors active:scale-[0.98]"
-                        >
-                          Submit Selected ({performanceSelectedStudents.length})
-                        </button>
-                      </div>
-                    </div>
+                      );
+                    })()
                   )
                 ) : !performanceSelectedClass ? (
                   <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
@@ -6945,6 +7240,319 @@ Fine Amount: ${amount}`;
                 className="px-4 py-2 bg-rose-600 text-white font-bold text-sm rounded-xl hover:bg-rose-700 shadow-sm shadow-rose-200 active:scale-95 transition-all"
               >
                 OK
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ROOM TALLY MODAL */}
+      {showRoomTallyModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120] animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-emerald-700">
+                <Award className="w-6 h-6" />
+                <h3 className="font-extrabold text-lg">Room Tally Entry</h3>
+              </div>
+              <button onClick={() => setShowRoomTallyModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-1.5">Tally Number (Count)</label>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setRoomTallyCount(prev => Math.max(1, prev - 1))}
+                    className="w-11 h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-black text-lg flex items-center justify-center transition-colors"
+                  >
+                    -
+                  </button>
+                  <input
+                    type="number"
+                    min="1"
+                    value={roomTallyCount}
+                    onChange={e => setRoomTallyCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="flex-1 py-2.5 px-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-center text-xl text-slate-800 focus:outline-none focus:border-emerald-500"
+                  />
+                  <button
+                    onClick={() => setRoomTallyCount(prev => prev + 1)}
+                    className="w-11 h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black text-lg flex items-center justify-center transition-colors shadow-xs"
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-1.5">Reason / Notes</label>
+                <input
+                  type="text"
+                  value={roomTallyReason}
+                  onChange={e => setRoomTallyReason(e.target.value)}
+                  placeholder="e.g. Room untidy, Bed not properly made..."
+                  className="w-full py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl text-xs text-emerald-800 font-bold">
+                Applying to {performanceSelectedStudents.length} selected student(s) in {selectedRoom}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setShowRoomTallyModal(false)}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
+                  const allocated = ROOM_STUDENT_MAPPING[currentRoomKey] !== undefined ? 
+                    ROOM_STUDENT_MAPPING[currentRoomKey] : 
+                    students.filter(s => String(s.room || s.roomNumber || '').trim() === currentRoomKey);
+                  const selectedObjs = allocated.filter(s => performanceSelectedStudents.includes(s.id));
+                  
+                  const now = new Date();
+                  const summary = {
+                    date: now.toLocaleDateString('en-GB'),
+                    time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    room: `${selectedHostel} • ${selectedRoom}`,
+                    tallyNumber: roomTallyCount,
+                    reason: roomTallyReason || 'Room Tally',
+                    students: selectedObjs
+                  };
+                  
+                  setShowRoomTallyModal(false);
+                  setRoomTallySummary(summary);
+                }}
+                className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95"
+              >
+                DONE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ROOM TALLY SUMMARY MODAL */}
+      {roomTallySummary && (
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center p-4 z-[130] animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-emerald-600 to-teal-600 p-4 rounded-2xl text-white text-center shadow-md">
+              <span className="text-[10px] font-black uppercase tracking-widest text-emerald-200 block">Performance Summary</span>
+              <h3 className="text-xl font-black uppercase mt-0.5">ROOM TALLY ENTRY</h3>
+            </div>
+
+            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-xs">
+              <div className="flex justify-between border-b border-slate-200 pb-2">
+                <span className="font-bold text-slate-500">Date:</span>
+                <span className="font-extrabold text-slate-800">{roomTallySummary.date}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200 pb-2">
+                <span className="font-bold text-slate-500">Time:</span>
+                <span className="font-extrabold text-slate-800">{roomTallySummary.time}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200 pb-2">
+                <span className="font-bold text-slate-500">Room:</span>
+                <span className="font-extrabold text-emerald-700">{roomTallySummary.room}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200 pb-2">
+                <span className="font-bold text-slate-500">Tally Number:</span>
+                <span className="font-black text-emerald-600 text-sm">{roomTallySummary.tallyNumber}</span>
+              </div>
+              <div className="flex justify-between pb-1">
+                <span className="font-bold text-slate-500">Reason:</span>
+                <span className="font-extrabold text-slate-800 text-right">{roomTallySummary.reason}</span>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2">Allocated Students</span>
+              <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                {roomTallySummary.students.map((s, idx) => (
+                  <div key={s.id || idx} className="p-2.5 bg-white border border-slate-200 rounded-xl flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-800">{idx + 1}. {s.name}</span>
+                    <span className="font-black text-emerald-700 text-[10px] bg-emerald-50 px-2 py-0.5 rounded-md">Class {s.class}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => {
+                  const studentListStr = roomTallySummary.students.map((s, i) => `${i + 1}. ${s.name} (${s.class})`).join('\n');
+                  const msg = `*ROOM TALLY ENTRY SUMMARY*\n\n` +
+                    `*Date:* ${roomTallySummary.date}\n` +
+                    `*Time:* ${roomTallySummary.time}\n` +
+                    `*Room:* ${roomTallySummary.room}\n` +
+                    `*Tally Number:* ${roomTallySummary.tallyNumber}\n` +
+                    `*Reason:* ${roomTallySummary.reason}\n\n` +
+                    `*Students Allocated:*\n${studentListStr}`;
+                  
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+                }}
+                className="flex-1 py-3.5 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                Share WhatsApp
+              </button>
+              <button
+                onClick={() => setRoomTallySummary(null)}
+                className="py-3.5 px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+              >
+                RETURN
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ROOM FINE MODAL */}
+      {showRoomFineModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120] animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-amber-600">
+                <AlertTriangle className="w-6 h-6" />
+                <h3 className="font-extrabold text-lg">Room Fine Entry</h3>
+              </div>
+              <button onClick={() => setShowRoomFineModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-1.5">Fine Amount (₹)</label>
+                <input
+                  type="number"
+                  value={roomFineAmount}
+                  onChange={e => setRoomFineAmount(e.target.value)}
+                  placeholder="e.g. 50, 100, 200"
+                  className="w-full py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl font-black text-lg text-slate-800 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-1.5">Reason / Violation</label>
+                <input
+                  type="text"
+                  value={roomFineReason}
+                  onChange={e => setRoomFineReason(e.target.value)}
+                  placeholder="e.g. Late night disturbance, Damaged property..."
+                  className="w-full py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-sm text-slate-800 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-800 font-bold">
+                Applying to {performanceSelectedStudents.length} selected student(s) in {selectedRoom}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => setShowRoomFineModal(false)}
+                className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
+                  const allocated = ROOM_STUDENT_MAPPING[currentRoomKey] !== undefined ? 
+                    ROOM_STUDENT_MAPPING[currentRoomKey] : 
+                    students.filter(s => String(s.room || s.roomNumber || '').trim() === currentRoomKey);
+                  const selectedObjs = allocated.filter(s => performanceSelectedStudents.includes(s.id));
+                  
+                  const now = new Date();
+                  const summary = {
+                    date: now.toLocaleDateString('en-GB'),
+                    time: now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                    room: `${selectedHostel} • ${selectedRoom}`,
+                    amount: roomFineAmount || '0',
+                    reason: roomFineReason || 'Room Fine Violation',
+                    students: selectedObjs
+                  };
+                  
+                  setShowRoomFineModal(false);
+                  setRoomFineSummary(summary);
+                }}
+                className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95"
+              >
+                DONE
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ROOM FINE SUMMARY MODAL */}
+      {roomFineSummary && (
+        <div className="fixed inset-0 bg-slate-900/65 backdrop-blur-sm flex items-center justify-center p-4 z-[130] animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
+            <div className="bg-gradient-to-r from-amber-500 to-orange-600 p-4 rounded-2xl text-white text-center shadow-md">
+              <span className="text-[10px] font-black uppercase tracking-widest text-amber-100 block">Performance Summary</span>
+              <h3 className="text-xl font-black uppercase mt-0.5">ROOM FINE ENTRY</h3>
+            </div>
+
+            <div className="space-y-3 bg-slate-50 p-4 rounded-2xl border border-slate-200/80 text-xs">
+              <div className="flex justify-between border-b border-slate-200 pb-2">
+                <span className="font-bold text-slate-500">Date:</span>
+                <span className="font-extrabold text-slate-800">{roomFineSummary.date}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200 pb-2">
+                <span className="font-bold text-slate-500">Time:</span>
+                <span className="font-extrabold text-slate-800">{roomFineSummary.time}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200 pb-2">
+                <span className="font-bold text-slate-500">Room:</span>
+                <span className="font-extrabold text-amber-700">{roomFineSummary.room}</span>
+              </div>
+              <div className="flex justify-between border-b border-slate-200 pb-2">
+                <span className="font-bold text-slate-500">Fine Amount:</span>
+                <span className="font-black text-amber-600 text-sm">₹{roomFineSummary.amount}</span>
+              </div>
+              <div className="flex justify-between pb-1">
+                <span className="font-bold text-slate-500">Reason:</span>
+                <span className="font-extrabold text-slate-800 text-right">{roomFineSummary.reason}</span>
+              </div>
+            </div>
+
+            <div>
+              <span className="text-[11px] font-extrabold text-slate-400 uppercase tracking-wider block mb-2">Allocated Students</span>
+              <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1">
+                {roomFineSummary.students.map((s, idx) => (
+                  <div key={s.id || idx} className="p-2.5 bg-white border border-slate-200 rounded-xl flex justify-between items-center text-xs">
+                    <span className="font-bold text-slate-800">{idx + 1}. {s.name}</span>
+                    <span className="font-black text-amber-700 text-[10px] bg-amber-50 px-2 py-0.5 rounded-md">Class {s.class}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2">
+              <button
+                onClick={() => {
+                  const studentListStr = roomFineSummary.students.map((s, i) => `${i + 1}. ${s.name} (${s.class})`).join('\n');
+                  const msg = `*ROOM FINE ENTRY SUMMARY*\n\n` +
+                    `*Date:* ${roomFineSummary.date}\n` +
+                    `*Time:* ${roomFineSummary.time}\n` +
+                    `*Room:* ${roomFineSummary.room}\n` +
+                    `*Fine Amount:* ₹${roomFineSummary.amount}\n` +
+                    `*Reason:* ${roomFineSummary.reason}\n\n` +
+                    `*Students Allocated:*\n${studentListStr}`;
+                  
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(msg)}`, '_blank');
+                }}
+                className="flex-1 py-3.5 bg-[#25D366] hover:bg-[#1DA851] text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-2"
+              >
+                Share WhatsApp
+              </button>
+              <button
+                onClick={() => setRoomFineSummary(null)}
+                className="py-3.5 px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+              >
+                BACK
               </button>
             </div>
           </div>
