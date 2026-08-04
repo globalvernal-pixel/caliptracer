@@ -4273,66 +4273,72 @@ Fine Amount: ${amount}`;
                               </tr>
                             </thead>
                             <tbody>
-                              {CLASSES.flatMap(c => {
+                              {(() => {
                                 const todayDateStr = new Date().toISOString().split('T')[0];
-                                const classStudents = students.filter(s => s.class === c && s.morningBlissMark != null && s.morningBlissMark !== '' && (s.summaryDate === todayDateStr || !s.summaryDate));
-                                if (classStudents.length === 0) return [];
+                                const rows = CLASSES.flatMap(c => {
+                                  const classStudents = students.filter(s => s.class === c && s.morningBlissMark != null && s.morningBlissMark !== '' && (s.summaryDate === todayDateStr || !s.summaryDate));
+                                  if (classStudents.length === 0) return [];
 
-                                return classStudents.map(s => {
-                                  const total = (Number(s.morningBlissMark) || 0) + (Number(s.morningBlissScript) || 0);
-                                  return (
-                                  <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
-                                    <td className="p-3 font-bold text-slate-800">{s.class.toUpperCase()}</td>
-                                    <td className="p-3 font-medium text-slate-700">{s.name}</td>
-                                    <td className="p-3 font-bold text-indigo-600">{s.morningBlissMark != null ? s.morningBlissMark : '-'}</td>
-                                    <td className="p-3">
-                                      <input 
-                                        type="number"
-                                        min="0"
-                                        max="2"
-                                        step="0.1"
-                                        value={s.morningBlissScript != null ? s.morningBlissScript : ''}
-                                        onChange={(e) => {
-                                          const val = e.target.value === '' ? null : Number(e.target.value);
-                                          
-                                          const newTotal = (Number(s.morningBlissMark) || 0) + (val || 0);
-                                          let newStars = 0;
-                                          if (newTotal === 10) newStars = 3;
-                                          else if (newTotal >= 9.5) newStars = 2;
-                                          else if (newTotal >= 9) newStars = 1;
+                                  return classStudents.map(s => {
+                                    const total = (Number(s.morningBlissMark) || 0) + (Number(s.morningBlissScript) || 0);
+                                    return (
+                                    <tr key={s.id} className="border-b border-slate-100 hover:bg-slate-50">
+                                      <td className="p-3 font-bold text-slate-800">{s.class.toUpperCase()}</td>
+                                      <td className="p-3 font-medium text-slate-700">{s.name}</td>
+                                      <td className="p-3 font-bold text-indigo-600">{s.morningBlissMark != null ? s.morningBlissMark : '-'}</td>
+                                      <td className="p-3">
+                                        <input 
+                                          type="number"
+                                          min="0"
+                                          max="2"
+                                          step="0.1"
+                                          value={s.morningBlissScript != null ? s.morningBlissScript : ''}
+                                          onChange={(e) => {
+                                            const val = e.target.value === '' ? null : Number(e.target.value);
+                                            
+                                            const newTotal = (Number(s.morningBlissMark) || 0) + (val || 0);
+                                            let newStars = 0;
+                                            if (newTotal === 10) newStars = 3;
+                                            else if (newTotal >= 9.5) newStars = 2;
+                                            else if (newTotal >= 9) newStars = 1;
 
-                                          const starDiff = newStars - (s.morningBlissStar || 0);
-                                          
-                                          const updated = {
-                                            ...s,
-                                            morningBlissScript: val,
-                                            morningBlissStar: newStars,
-                                            star: (s.star || 0) + starDiff
-                                          };
-                                          
-                                          setStudents(prev => prev.map(student => student.id === s.id ? updated : student));
-                                          
-                                          fetch('/api/students/bulk-upsert', {
-                                              method: 'POST',
-                                              headers: { 'Content-Type': 'application/json' },
-                                              body: JSON.stringify({ students: [updated] })
-                                          }).catch(err => console.error("Error bulk upserting:", err));
-                                        }}
-                                        className="w-16 p-1 border rounded bg-white text-center focus:ring-2 focus:ring-violet-500"
-                                      />
+                                            const starDiff = newStars - (s.morningBlissStar || 0);
+                                            
+                                            const updated = {
+                                              ...s,
+                                              morningBlissScript: val,
+                                              morningBlissStar: newStars,
+                                              star: (s.star || 0) + starDiff
+                                            };
+                                            
+                                            setStudents(prev => prev.map(student => student.id === s.id ? updated : student));
+                                            
+                                            fetch('/api/students/bulk-upsert', {
+                                                method: 'POST',
+                                                headers: { 'Content-Type': 'application/json' },
+                                                body: JSON.stringify({ students: [updated] })
+                                            }).catch(err => console.error("Error bulk upserting:", err));
+                                          }}
+                                          className="w-16 p-1 border rounded bg-white text-center focus:ring-2 focus:ring-violet-500"
+                                        />
+                                      </td>
+                                      <td className="p-3 font-bold text-emerald-600">{total > 0 ? total : '-'}</td>
+                                      <td className="p-3 font-bold text-amber-500">{s.morningBlissStar > 0 ? Array(s.morningBlissStar).fill('⭐').join('') : '-'}</td>
+                                      <td className="p-3 text-slate-600 text-sm">{s.morningBlissEv || '-'}</td>
+                                    </tr>
+                                  )});
+                                });
+
+                                return rows.length === 0 ? (
+                                  <tr>
+                                    <td colSpan="7" className="p-8 text-center text-slate-400 font-medium">
+                                      No Morning Bliss evaluations recorded for today yet. Use the "Morning Bliss" form to submit evaluations for today.
                                     </td>
-                                    <td className="p-3 font-bold text-emerald-600">{total > 0 ? total : '-'}</td>
-                                    <td className="p-3 font-bold text-amber-500">{s.morningBlissStar > 0 ? Array(s.morningBlissStar).fill('⭐').join('') : '-'}</td>
-                                    <td className="p-3 text-slate-600 text-sm">{s.morningBlissEv || '-'}</td>
                                   </tr>
-                                )});
-                              }).length === 0 && (
-                                <tr>
-                                  <td colSpan="7" className="p-8 text-center text-slate-400 font-medium">
-                                    No Morning Bliss evaluations recorded for today yet. Use the "Morning Bliss" form to submit evaluations for today.
-                                  </td>
-                                </tr>
-                              )}
+                                ) : (
+                                  rows
+                                );
+                              })()}
                             </tbody>
                           </table>
                         </div>
