@@ -592,6 +592,74 @@ export default function App() {
   const [roomFineAmount, setRoomFineAmount] = useState('');
   const [roomFineReason, setRoomFineReason] = useState('');
   const [roomFineSummary, setRoomFineSummary] = useState(null);
+
+  // Room Student Allocation State & Persistence
+  const [roomStudentMapping, setRoomStudentMapping] = useState(() => {
+    const saved = localStorage.getItem('student_tracker_room_mapping');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return ROOM_STUDENT_MAPPING;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('student_tracker_room_mapping', JSON.stringify(roomStudentMapping));
+  }, [roomStudentMapping]);
+
+  const [showAddRoomStudentModal, setShowAddRoomStudentModal] = useState(false);
+  const [showRemoveRoomStudentModal, setShowRemoveRoomStudentModal] = useState(false);
+  const [addRoomStudentName, setAddRoomStudentName] = useState('');
+  const [addRoomStudentClass, setAddRoomStudentClass] = useState('S1B');
+  const [showAddRoomDropdown, setShowAddRoomDropdown] = useState(false);
+  const [removeSelectedRoomStudentIds, setRemoveSelectedRoomStudentIds] = useState([]);
+
+  // Handler to add student to current open room
+  const handleAddStudentToPerformanceRoom = (e) => {
+    e.preventDefault();
+    if (!addRoomStudentName.trim()) return;
+    const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
+    if (!currentRoomKey) return;
+
+    const newStudentObj = {
+      id: 'r' + currentRoomKey + '-' + Date.now(),
+      name: addRoomStudentName.trim().toUpperCase(),
+      class: addRoomStudentClass.trim().toUpperCase()
+    };
+
+    setRoomStudentMapping(prev => {
+      const existing = prev[currentRoomKey] || [];
+      if (existing.some(s => s.name.toUpperCase() === newStudentObj.name && s.class.toUpperCase() === newStudentObj.class)) {
+        alert(`${newStudentObj.name} is already in ${selectedRoom}!`);
+        return prev;
+      }
+      return {
+        ...prev,
+        [currentRoomKey]: [...existing, newStudentObj]
+      };
+    });
+
+    setAddRoomStudentName('');
+    setShowAddRoomStudentModal(false);
+  };
+
+  // Handler to remove students from current open room
+  const handleRemoveStudentsFromPerformanceRoom = (idsToRemove) => {
+    if (!idsToRemove || idsToRemove.length === 0) return;
+    const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
+    if (!currentRoomKey) return;
+
+    setRoomStudentMapping(prev => {
+      const existing = prev[currentRoomKey] || [];
+      return {
+        ...prev,
+        [currentRoomKey]: existing.filter(s => !idsToRemove.includes(s.id))
+      };
+    });
+
+    setPerformanceSelectedStudents(prev => prev.filter(id => !idsToRemove.includes(id)));
+    setRemoveSelectedRoomStudentIds([]);
+    setShowRemoveRoomStudentModal(false);
+  };
   
   const [showAddIneligibleModal, setShowAddIneligibleModal] = useState(false);
   const [ineligibleSelectedStudents, setIneligibleSelectedStudents] = useState([]);
@@ -5019,8 +5087,8 @@ Fine Amount: ${amount}`;
                             onClick={() => {
                               const roomStr = `Room ${num}`;
                               setSelectedRoom(roomStr);
-                              const allocated = ROOM_STUDENT_MAPPING[String(num)] !== undefined ? 
-                                ROOM_STUDENT_MAPPING[String(num)] : 
+                              const allocated = roomStudentMapping[String(num)] !== undefined ? 
+                                roomStudentMapping[String(num)] : 
                                 students.filter(s => String(s.room || s.roomNumber || '').trim() === String(num));
                               setPerformanceSelectedStudents(allocated.map(s => s.id));
                             }}
@@ -5038,8 +5106,8 @@ Fine Amount: ${amount}`;
                     /* STEP 3: Student Selection & Room Actions inside Selected Room */
                     (() => {
                       const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
-                      const allocatedRoomStudents = ROOM_STUDENT_MAPPING[currentRoomKey] !== undefined ? 
-                        ROOM_STUDENT_MAPPING[currentRoomKey] : 
+                      const allocatedRoomStudents = roomStudentMapping[currentRoomKey] !== undefined ? 
+                        roomStudentMapping[currentRoomKey] : 
                         students.filter(s => String(s.room || s.roomNumber || '').trim() === currentRoomKey);
                       
                       const selectedCount = performanceSelectedStudents.length;
@@ -5047,7 +5115,7 @@ Fine Amount: ${amount}`;
                       return (
                         <div className="flex-1 overflow-hidden flex flex-col bg-slate-50 relative">
                           {/* TOP BAR: Room Details Card at very top (replacing "Allocated Students" heading) */}
-                          <div className="p-3 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between shrink-0 shadow-xs">
+                          <div className="p-3 bg-emerald-50 border-b border-emerald-100 flex items-center justify-between shrink-0 shadow-xs flex-wrap gap-2">
                             <div className="flex items-center gap-2.5">
                               <div className="w-9 h-9 rounded-xl bg-emerald-600 text-white flex items-center justify-center font-bold shadow-xs">
                                 <School className="w-5 h-5" />
@@ -5058,7 +5126,35 @@ Fine Amount: ${amount}`;
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                              {/* 1. ADD STUDENT BUTTON */}
+                              <button
+                                onClick={() => {
+                                  setAddRoomStudentName('');
+                                  setAddRoomStudentClass(CLASSES[0] || 'S1B');
+                                  setShowAddRoomStudentModal(true);
+                                }}
+                                className="text-xs font-extrabold text-emerald-800 bg-emerald-200/90 hover:bg-emerald-300 px-2.5 sm:px-3 py-1.5 rounded-xl border border-emerald-300 transition-all flex items-center gap-1 shadow-xs active:scale-95"
+                                title="Add student to this room"
+                              >
+                                <Plus className="w-3.5 h-3.5" />
+                                <span>Add</span>
+                              </button>
+
+                              {/* 2. REMOVE STUDENT BUTTON */}
+                              <button
+                                onClick={() => {
+                                  setRemoveSelectedRoomStudentIds(performanceSelectedStudents);
+                                  setShowRemoveRoomStudentModal(true);
+                                }}
+                                className="text-xs font-extrabold text-rose-700 bg-rose-100 hover:bg-rose-200 px-2.5 sm:px-3 py-1.5 rounded-xl border border-rose-200 transition-all flex items-center gap-1 shadow-xs active:scale-95"
+                                title="Remove student from this room"
+                              >
+                                <Minus className="w-3.5 h-3.5" />
+                                <span>Remove</span>
+                              </button>
+
+                              {/* SELECT ALL / DESELECT ALL */}
                               <button
                                 onClick={() => {
                                   if (selectedCount === allocatedRoomStudents.length) {
@@ -5067,16 +5163,18 @@ Fine Amount: ${amount}`;
                                     setPerformanceSelectedStudents(allocatedRoomStudents.map(s => s.id));
                                   }
                                 }}
-                                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-100/80 hover:bg-emerald-200 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors"
+                                className="text-xs font-bold text-emerald-700 hover:text-emerald-900 bg-emerald-100/80 hover:bg-emerald-200 px-2.5 sm:px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors"
                               >
                                 {selectedCount === allocatedRoomStudents.length ? 'Deselect All' : 'Select All'}
                               </button>
+
+                              {/* CHANGE */}
                               <button
                                 onClick={() => {
                                   setSelectedRoom(null);
                                   setPerformanceSelectedStudents([]);
                                 }}
-                                className="text-xs font-bold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors shadow-2xs"
+                                className="text-xs font-bold text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-100 px-2.5 sm:px-3 py-1.5 rounded-xl border border-slate-200 transition-colors shadow-2xs"
                               >
                                 Change
                               </button>
@@ -7638,6 +7736,195 @@ Fine Amount: ${amount}`;
                 BACK
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ADD STUDENT TO ROOM MODAL */}
+      {showAddRoomStudentModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120] animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-emerald-600">
+                <PlusCircle className="w-6 h-6" />
+                <h3 className="font-extrabold text-lg">Add Student to {selectedRoom}</h3>
+              </div>
+              <button onClick={() => setShowAddRoomStudentModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            </div>
+
+            <form onSubmit={handleAddStudentToPerformanceRoom} className="flex flex-col gap-4">
+              {/* Select Existing Student or Type Name */}
+              <div className="relative">
+                <label className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-1.5">Student Name</label>
+                <div className="relative">
+                  <Search className="w-5 h-5 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={addRoomStudentName}
+                    onChange={e => {
+                      setAddRoomStudentName(e.target.value);
+                      setShowAddRoomDropdown(true);
+                    }}
+                    onFocus={() => setShowAddRoomDropdown(true)}
+                    placeholder="Search or enter student name..."
+                    className="w-full py-3 pl-11 pr-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
+                    required
+                  />
+                </div>
+
+                {/* Dropdown suggestions from existing students */}
+                {showAddRoomDropdown && addRoomStudentName && (
+                  <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto z-50 divide-y divide-slate-100">
+                    {students
+                      .filter(s => s.name.toLowerCase().includes(addRoomStudentName.toLowerCase()))
+                      .slice(0, 10)
+                      .map(s => (
+                        <button
+                          key={s.id}
+                          type="button"
+                          onMouseDown={() => {
+                            setAddRoomStudentName(s.name);
+                            if (s.class) setAddRoomStudentClass(s.class);
+                            setShowAddRoomDropdown(false);
+                          }}
+                          className="w-full text-left px-4 py-2.5 text-xs text-slate-700 hover:bg-emerald-50 hover:text-emerald-800 flex justify-between items-center transition-colors"
+                        >
+                          <span className="font-extrabold">{s.name}</span>
+                          <span className="font-bold text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md uppercase">Class {s.class}</span>
+                        </button>
+                      ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Class Selection */}
+              <div>
+                <label className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-1.5">Class</label>
+                <select
+                  value={addRoomStudentClass}
+                  onChange={e => setAddRoomStudentClass(e.target.value)}
+                  className="w-full py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm text-slate-800 focus:outline-none focus:border-emerald-500 uppercase"
+                  required
+                >
+                  {CLASSES.map(cls => (
+                    <option key={cls} value={cls}>Class {cls.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddRoomStudentModal(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> Add Student
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* REMOVE STUDENT FROM ROOM MODAL */}
+      {showRemoveRoomStudentModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120] animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600">
+                <Trash2 className="w-6 h-6" />
+                <h3 className="font-extrabold text-lg">Remove Student from {selectedRoom}</h3>
+              </div>
+              <button onClick={() => setShowRemoveRoomStudentModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            </div>
+
+            {(() => {
+              const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
+              const roomStudents = roomStudentMapping[currentRoomKey] !== undefined ?
+                roomStudentMapping[currentRoomKey] :
+                students.filter(s => String(s.room || s.roomNumber || '').trim() === currentRoomKey);
+
+              return (
+                <div className="flex flex-col gap-4">
+                  <p className="text-xs font-semibold text-slate-500">
+                    Select the student(s) you wish to remove from <span className="font-extrabold text-slate-800">{selectedRoom}</span>:
+                  </p>
+
+                  <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                    {roomStudents.map(s => {
+                      const isSelected = removeSelectedRoomStudentIds.includes(s.id);
+                      return (
+                        <div
+                          key={s.id}
+                          onClick={() => {
+                            setRemoveSelectedRoomStudentIds(prev =>
+                              prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                            );
+                          }}
+                          className={`p-3 rounded-2xl border flex items-center justify-between cursor-pointer transition-all ${
+                            isSelected
+                              ? 'bg-rose-50 border-rose-400 text-rose-950'
+                              : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2.5">
+                            <div className={`w-7 h-7 rounded-lg flex items-center justify-center font-bold text-xs ${
+                              isSelected ? 'bg-rose-600 text-white' : 'bg-slate-200 text-slate-600'
+                            }`}>
+                              {s.name.charAt(0)}
+                            </div>
+                            <div>
+                              <span className="font-extrabold text-xs block">{s.name}</span>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">Class {s.class}</span>
+                            </div>
+                          </div>
+
+                          <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center ${
+                            isSelected ? 'bg-rose-600 border-rose-600' : 'border-slate-300 bg-white'
+                          }`}>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-white stroke-[3]" />}
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {roomStudents.length === 0 && (
+                      <div className="p-6 text-center text-slate-400 font-bold text-xs">
+                        No students currently allocated in this room.
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowRemoveRoomStudentModal(false)}
+                      className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      disabled={removeSelectedRoomStudentIds.length === 0}
+                      onClick={() => handleRemoveStudentsFromPerformanceRoom(removeSelectedRoomStudentIds)}
+                      className={`flex-1 py-3 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-1.5 ${
+                        removeSelectedRoomStudentIds.length === 0
+                          ? 'bg-slate-300 cursor-not-allowed shadow-none'
+                          : 'bg-rose-600 hover:bg-rose-700 active:scale-95'
+                      }`}
+                    >
+                      <Trash2 className="w-4 h-4" /> Remove ({removeSelectedRoomStudentIds.length})
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
