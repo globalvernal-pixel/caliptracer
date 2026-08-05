@@ -1827,6 +1827,7 @@ Fine Amount: ${amount}`;
   const [activitySearchQuery, setActivitySearchQuery] = useState('');
   const [activityEditModal, setActivityEditModal] = useState(null);
   const [showAddActivityModal, setShowAddActivityModal] = useState(false);
+  const [selectedActivityIds, setSelectedActivityIds] = useState([]);
   const [newActivityForm, setNewActivityForm] = useState({
     student_id: '',
     event_type: 'tally',
@@ -1834,6 +1835,7 @@ Fine Amount: ${amount}`;
     reason: '',
     date: new Date().toISOString().split('T')[0]
   });
+
 
   const fetchAllActivities = async () => {
     try {
@@ -1878,11 +1880,28 @@ Fine Amount: ${amount}`;
       const res = await fetch(`/api/history/${id}`, { method: 'DELETE' });
       if (res.ok) {
         setActivitiesLogs(prev => prev.filter(item => String(item.id) !== String(id)));
+        setSelectedActivityIds(prev => prev.filter(item => String(item) !== String(id)));
       }
     } catch (err) {
       console.error('Failed to delete activity:', err);
     }
   };
+
+  const handleBulkDeleteActivities = async () => {
+    if (selectedActivityIds.length === 0) return;
+    if (!window.confirm(`Are you sure you want to delete ${selectedActivityIds.length} selected activity record(s)?`)) return;
+
+    for (const id of selectedActivityIds) {
+      try {
+        await fetch(`/api/history/${id}`, { method: 'DELETE' });
+      } catch (err) {
+        console.error('Failed to delete activity:', err);
+      }
+    }
+    setActivitiesLogs(prev => prev.filter(item => !selectedActivityIds.includes(item.id)));
+    setSelectedActivityIds([]);
+  };
+
 
   const handleCreateActivity = async (e) => {
     e.preventDefault();
@@ -8481,104 +8500,150 @@ Fine Amount: ${amount}`;
               </div>
             </div>
 
-            {/* Activities Table List */}
-            <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
-              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-[#1A365D]/5 border-b border-slate-200 text-[11px] font-extrabold uppercase text-[#1A365D]">
-                      <th className="p-3 w-28">Date</th>
-                      <th className="p-3">Student Name</th>
-                      <th className="p-3 w-20 text-center">Class</th>
-                      <th className="p-3">Activity & Amount</th>
-                      <th className="p-3">Reason</th>
-                      {isAdminAuthenticated && <th className="p-3 w-24 text-center">Actions</th>}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
-                    {filteredActivities.length > 0 ? (
-                      filteredActivities.map((log) => {
-                        const studentObj = students.find(s => String(s.id) === String(log.student_id));
-                        const studentName = studentObj ? studentObj.name : (log.student_name || `Student #${log.student_id}`);
-                        const studentClass = studentObj ? studentObj.class.toUpperCase() : (log.class ? log.class.toUpperCase() : '-');
-                        
-                        const d = log.date ? new Date(log.date) : new Date();
-                        const formattedDate = isNaN(d.getTime()) ? String(log.date) : `${d.getDate()}/${d.getMonth() + 1}/${String(d.getFullYear()).slice(-2)}`;
+            {/* Selection & Action Toolbar Bar */}
+            {isAdminAuthenticated && (
+              <div className="px-4 py-2.5 bg-slate-100 border-b border-slate-200 flex items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="selectAllActivities"
+                    checked={filteredActivities.length > 0 && selectedActivityIds.length === filteredActivities.length}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedActivityIds(filteredActivities.map(a => a.id));
+                      } else {
+                        setSelectedActivityIds([]);
+                      }
+                    }}
+                    className="w-4 h-4 rounded border-slate-300 text-[#1A365D] focus:ring-blue-500 cursor-pointer"
+                  />
+                  <label htmlFor="selectAllActivities" className="text-xs font-extrabold text-slate-700 cursor-pointer">
+                    Select All ({filteredActivities.length})
+                  </label>
+                </div>
 
-                        let eventDisplay = '';
-                        const type = String(log.event_type || '').toLowerCase();
-                        if (type === 'star') {
-                          eventDisplay = `${log.amount || 1} STAR`;
-                        } else if (type === 'tally') {
-                          eventDisplay = `${log.amount || 1} TALLY`;
-                        } else if (type === 'spot fine' || type === 'spot_fine' || type === 'fine') {
-                          eventDisplay = `SPOT FINE ${log.amount ? '(₹' + log.amount + ')' : ''}`;
-                        } else if (type === 'spot') {
-                          eventDisplay = `SPOT`;
-                        } else if (type === 'sata') {
-                          eventDisplay = `${log.amount || 1} SATA`;
-                        } else {
-                          eventDisplay = `${log.amount && log.amount > 0 ? log.amount + ' ' : ''}${type.toUpperCase()}`;
-                        }
-
-                        return (
-                          <tr key={log.id} className="hover:bg-slate-50 transition-colors">
-                            <td className="p-3 font-mono text-slate-600 font-bold">{formattedDate}</td>
-                            <td className="p-3 font-extrabold text-slate-900 uppercase">{studentName}</td>
-                            <td className="p-3 text-center font-extrabold text-blue-800">
-                              <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[10px]">
-                                {studentClass}
-                              </span>
-                            </td>
-                            <td className="p-3 font-extrabold text-[#1A365D]">
-                              <span className={`px-2.5 py-1 rounded-lg text-[11px] inline-block ${
-                                type.includes('star') || type.includes('sata') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
-                                type.includes('fine') || type.includes('spot') ? 'bg-rose-100 text-rose-800 border border-rose-200' :
-                                type.includes('tally') ? 'bg-sky-100 text-sky-800 border border-sky-200' :
-                                'bg-purple-100 text-purple-800 border border-purple-200'
-                              }`}>
-                                {eventDisplay}
-                              </span>
-                            </td>
-                            <td className="p-3 text-slate-600 font-semibold">{log.reason || '-'}</td>
-                            {isAdminAuthenticated && (
-                              <td className="p-3 text-center">
-                                <div className="flex items-center justify-center gap-1">
-                                  <button
-                                    onClick={() => setActivityEditModal({ ...log, date: log.date ? new Date(log.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0] })}
-                                    className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors cursor-pointer"
-                                    title="Edit Activity"
-                                  >
-                                    <Pencil className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    onClick={() => handleDeleteActivity(log.id)}
-                                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
-                                    title="Delete Activity"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-                              </td>
-                            )}
-                          </tr>
-                        );
-                      })
-                    ) : (
-                      <tr>
-                        <td colSpan={isAdminAuthenticated ? 6 : 5} className="p-8 text-center text-slate-400 font-medium italic">
-                          No activities found matching your filter criteria.
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
+                {selectedActivityIds.length > 0 && (
+                  <button
+                    onClick={handleBulkDeleteActivities}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold rounded-lg shadow-xs active:scale-95 transition-all cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete Selected ({selectedActivityIds.length})</span>
+                  </button>
+                )}
               </div>
+            )}
+
+            {/* Activities Table / Card List */}
+            <div className="flex-1 overflow-y-auto p-3 sm:p-4 bg-slate-50/50">
+              {filteredActivities.length > 0 ? (
+                <div className="flex flex-col gap-2.5">
+                  {filteredActivities.map((log) => {
+                    const studentObj = students.find(s => String(s.id) === String(log.student_id));
+                    const studentName = studentObj ? studentObj.name : (log.student_name || `Student #${log.student_id}`);
+                    const studentClass = studentObj ? studentObj.class.toUpperCase() : (log.class ? log.class.toUpperCase() : '-');
+                    
+                    const d = log.date ? new Date(log.date) : new Date();
+                    const formattedDate = isNaN(d.getTime()) ? String(log.date) : `${d.getDate()}/${d.getMonth() + 1}/${String(d.getFullYear()).slice(-2)}`;
+
+                    let eventDisplay = '';
+                    const type = String(log.event_type || '').toLowerCase();
+                    if (type === 'star') {
+                      eventDisplay = `${log.amount || 1} STAR`;
+                    } else if (type === 'tally') {
+                      eventDisplay = `${log.amount || 1} TALLY`;
+                    } else if (type === 'spot fine' || type === 'spot_fine' || type === 'fine') {
+                      eventDisplay = `SPOT FINE ${log.amount ? '(₹' + log.amount + ')' : ''}`;
+                    } else if (type === 'spot') {
+                      eventDisplay = `SPOT`;
+                    } else if (type === 'sata') {
+                      eventDisplay = `${log.amount || 1} SATA`;
+                    } else {
+                      eventDisplay = `${log.amount && log.amount > 0 ? log.amount + ' ' : ''}${type.toUpperCase()}`;
+                    }
+
+                    const isChecked = selectedActivityIds.includes(log.id);
+
+                    return (
+                      <div 
+                        key={log.id} 
+                        className={`p-3.5 bg-white border rounded-xl shadow-xs transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                          isChecked ? 'border-blue-400 bg-blue-50/30' : 'border-slate-200 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className="flex items-start sm:items-center gap-3 min-w-0 flex-1">
+                          {isAdminAuthenticated && (
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => {
+                                setSelectedActivityIds(prev =>
+                                  prev.includes(log.id) ? prev.filter(i => i !== log.id) : [...prev, log.id]
+                                );
+                              }}
+                              className="w-4 h-4 mt-0.5 sm:mt-0 rounded border-slate-300 text-[#1A365D] focus:ring-blue-500 cursor-pointer shrink-0"
+                            />
+                          )}
+                          <div className="min-w-0 flex-1 flex flex-col sm:flex-row sm:items-center gap-1.5 sm:gap-4">
+                            <span className="font-mono text-[11px] font-bold text-slate-500 shrink-0">
+                              {formattedDate}
+                            </span>
+                            <span className="font-extrabold text-xs text-slate-900 uppercase truncate">
+                              {studentName}
+                            </span>
+                            <span className="inline-block self-start sm:self-auto px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[10px] font-extrabold text-blue-800 shrink-0">
+                              {studentClass}
+                            </span>
+                            <span className={`inline-block self-start sm:self-auto px-2.5 py-0.5 rounded-lg text-[10px] font-black shrink-0 ${
+                              type.includes('star') || type.includes('sata') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                              type.includes('fine') || type.includes('spot') ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                              type.includes('tally') ? 'bg-sky-100 text-sky-800 border border-sky-200' :
+                              'bg-purple-100 text-purple-800 border border-purple-200'
+                            }`}>
+                              {eventDisplay}
+                            </span>
+                            {log.reason && (
+                              <span className="text-xs text-slate-600 font-medium italic truncate">
+                                "{log.reason}"
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {isAdminAuthenticated && (
+                          <div className="flex items-center gap-1.5 self-end sm:self-auto shrink-0 border-t sm:border-t-0 pt-2 sm:pt-0 w-full sm:w-auto justify-end">
+                            <button
+                              onClick={() => setActivityEditModal({ ...log, date: log.date ? new Date(log.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0] })}
+                              className="px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Edit Activity"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+                            <button
+                              onClick={() => handleDeleteActivity(log.id)}
+                              className="px-2.5 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 text-xs font-bold transition-colors flex items-center gap-1 cursor-pointer"
+                              title="Delete Activity"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                              <span>Delete</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-slate-400 font-medium italic bg-white rounded-xl border border-slate-200">
+                  No activities found matching your filter criteria.
+                </div>
+              )}
             </div>
 
             {/* Modal Footer */}
             <div className="p-4 bg-white border-t border-slate-200 flex justify-between items-center text-xs font-semibold text-slate-500 shrink-0">
-              <span>Showing {filteredActivities.length} activity records</span>
+              <span>Showing {filteredActivities.length} activity records ({selectedActivityIds.length} selected)</span>
               <button
                 onClick={() => setShowActivitiesReportModal(false)}
                 className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all cursor-pointer"
@@ -8590,6 +8655,7 @@ Fine Amount: ${amount}`;
           </div>
         </div>
       )}
+
 
       {/* Edit Activity Modal */}
       {activityEditModal && (
