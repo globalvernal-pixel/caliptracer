@@ -4430,44 +4430,9 @@ ${selectedStudentSummaries.join('\n')}`;
                             >
                               <span className="text-sm">📥</span> Download Excel
                             </button>
-                            <button
-                              onClick={() => {
-                                if (confirm("Are you sure you want to clear Star and Tally data for these students? Names and classes will NOT be deleted.")) {
-                                  const idsToClear = assignedStudents.map(s => s.id);
-                                  setStudents(prev => prev.map(s => {
-                                    if (idsToClear.includes(s.id)) {
-                                      return { ...s, star: 0, tally: 0, starReason: '', tallyReason: '', diaryStar: 0, diaryTally: 0, neatAndOrderTally: 0, neatAndOrderReason: '', neatAndOrderIncidents: 0 };
-                                    }
-                                    return s;
-                                  }));
-                                  
-                                  setDiaryRecords(prev => {
-                                    const next = { ...prev };
-                                    idsToClear.forEach(id => delete next[id]);
-                                    return next;
-                                  });
-                                  
-                                  setAttendanceRecords(prev => {
-                                    const next = { ...prev };
-                                    idsToClear.forEach(id => delete next[id]);
-                                    return next;
-                                  });
-
-                                  fetch('/api/students/bulk-upsert', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({ 
-                                      students: assignedStudents.map(s => ({ ...s, star: 0, tally: 0, starReason: '', tallyReason: '', diaryStar: 0, diaryTally: 0, neatAndOrderTally: 0, neatAndOrderReason: '', neatAndOrderIncidents: 0 }))
-                                    })
-                                  }).catch(err => console.error("Error clearing data:", err));
-                                }
-                              }}
-                              className="px-3 py-1.5 bg-rose-500 hover:bg-rose-600 text-white text-[10px] uppercase font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1"
-                            >
-                              <span className="text-sm">🗑️</span> Clear Data
-                            </button>
                           </div>
                         </div>
+
                         
                         <div className="w-full flex-1 flex flex-col gap-2 mx-auto overflow-hidden bg-white border border-slate-200 rounded-xl shadow-sm">
                           <div className="overflow-x-auto h-full">
