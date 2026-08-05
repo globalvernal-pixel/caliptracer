@@ -838,10 +838,12 @@ export default function App() {
   
   const [spotClass, setSpotClass] = useState('');
   const [spotNameSearch, setSpotNameSearch] = useState('');
+  const [spotSelectedStudentIds, setSpotSelectedStudentIds] = useState([]);
   const [spotReason, setSpotReason] = useState('');
   const [spotAmount, setSpotAmount] = useState('');
   const [showSpotDropdown, setShowSpotDropdown] = useState(false);
   const [showSpotReasonDropdown, setShowSpotReasonDropdown] = useState(false);
+
 
   const [programClass, setProgramClass] = useState('');
   const [programNameSearch, setProgramNameSearch] = useState('');
@@ -1275,51 +1277,82 @@ Star Count: ${amount}`;
 
   const handleSpotFineSubmit = (e) => {
     e.preventDefault();
-    if (!spotClass || !spotNameSearch || !spotAmount) return;
 
-    const match = students.find(s => s.class === spotClass && s.name.toLowerCase() === spotNameSearch.toLowerCase());
-    const studentToUpdate = match || students.find(s => s.class === spotClass && s.name.toLowerCase().startsWith(spotNameSearch.toLowerCase()));
+    // Determine target students
+    let targetStudentIds = [...spotSelectedStudentIds];
 
-    if (!studentToUpdate) {
-        alert("Student not found!");
-        return;
+    // Fallback: If user typed a search name but didn't explicitly check a box, find matching student
+    if (targetStudentIds.length === 0 && spotNameSearch.trim()) {
+      const classMatch = (s) => !spotClass || spotClass === 'ALL' ? true : s.class === spotClass;
+      const match = students.find(s => classMatch(s) && s.name.toLowerCase() === spotNameSearch.trim().toLowerCase());
+      const partial = match || students.find(s => classMatch(s) && s.name.toLowerCase().startsWith(spotNameSearch.trim().toLowerCase()));
+      if (partial) {
+        targetStudentIds = [partial.id];
+      }
     }
-    
+
+    if (!spotClass || targetStudentIds.length === 0 || !spotAmount) {
+      if (targetStudentIds.length === 0) {
+        alert("Please select at least one student!");
+      }
+      return;
+    }
+
     const amount = Number(spotAmount);
-    const updated = {
-        ...studentToUpdate,
-        fine: (studentToUpdate.fine || 0) + amount,
-        fineCount: (studentToUpdate.fineCount || 0) + 1,
-        fineReason: spotReason || studentToUpdate.fineReason
-    };
-    
-    logHistory(studentToUpdate.id, 'Spot Fine', amount, spotReason);
-    
-    setStudents(students.map(s => s.id === studentToUpdate.id ? updated : s));
-    
+    let studentsToUpsert = [];
+    let updatedStudentsList = [...students];
+    let selectedStudentSummaries = [];
+
+    targetStudentIds.forEach(studentId => {
+      const studentToUpdate = updatedStudentsList.find(s => s.id === studentId);
+      if (studentToUpdate) {
+        const updated = {
+          ...studentToUpdate,
+          fine: (studentToUpdate.fine || 0) + amount,
+          fineCount: (studentToUpdate.fineCount || 0) + 1,
+          fineReason: spotReason || studentToUpdate.fineReason
+        };
+        logHistory(studentToUpdate.id, 'Spot Fine', amount, spotReason);
+        studentsToUpsert.push(updated);
+        selectedStudentSummaries.push(`- ${studentToUpdate.name} (${studentToUpdate.class.toUpperCase()})`);
+        updatedStudentsList = updatedStudentsList.map(s => s.id === studentId ? updated : s);
+      }
+    });
+
+    setStudents(updatedStudentsList);
+
     fetch('/api/students/bulk-upsert', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ students: [updated] })
-    }).catch(err => console.error("Error bulk upserting:", err));
+        body: JSON.stringify({ students: studentsToUpsert })
+    }).catch(err => console.error("Error bulk upserting spot fine:", err));
 
     setSpotNameSearch('');
+    setSpotSelectedStudentIds([]);
     setSpotReason('');
     setSpotAmount('');
-    
+    setShowSpotDropdown(false);
+
     const now = new Date();
-    const formattedDate = now.toLocaleDateString();
+    const formattedDate = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const formattedTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const spotFineSummary = `Date: ${formattedDate}
+    const classDisplay = spotClass === 'ALL' ? 'ALL CLASSES' : `CLASS ${spotClass.toUpperCase()}`;
+
+    const spotFineSummary = `🚨 *SPOT FINE REPORT*
+Date: ${formattedDate}
 Time: ${formattedTime}
-Class: ${spotClass.toUpperCase()}
-Name: ${studentToUpdate.name}
-Reason: ${spotReason}
-Fine Amount: ${amount}`;
+Class: ${classDisplay}
+Reason: ${spotReason || 'N/A'}
+Fine Amount: ₹${amount}
+Total Fined: ${selectedStudentSummaries.length} Student(s)
+
+Fined Students:
+${selectedStudentSummaries.join('\n')}`;
 
     setSummaryText(spotFineSummary);
     setShowSummaryModal(true);
   };
+
   
   const handlePerformanceSubmit = (e) => {
     e.preventDefault();
@@ -5159,18 +5192,60 @@ Fine Amount: ${amount}`;
                     <form onSubmit={handleSpotFineSubmit} className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex flex-col gap-4">
                         <div>
                             <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Select Class</label>
+
                             <select 
                                 value={spotClass} 
-                                onChange={(e) => setSpotClass(e.target.value)}
-                                className="w-full p-4 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#1A365D] bg-slate-50 appearance-none"
+                                onChange={(e) => {
+                                  setSpotClass(e.target.value);
+                                  setShowSpotDropdown(true);
+                                }}
+                                className="w-full p-4 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#1A365D] bg-slate-50 appearance-none cursor-pointer"
                                 required
                             >
                                 <option value="" disabled>Choose a class...</option>
+                                <option value="ALL">🌟 All Classes (Entire School)</option>
                                 {visibleClasses.map(cls => <option key={cls} value={cls}>Class {cls.toUpperCase()}</option>)}
                             </select>
                         </div>
+
+                        {spotSelectedStudentIds.length > 0 && (
+                            <div className="p-3 bg-rose-50/70 border border-rose-200 rounded-xl flex flex-col gap-2">
+                              <div className="flex items-center justify-between text-xs font-extrabold text-rose-800">
+                                <span>Selected Students ({spotSelectedStudentIds.length}):</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setSpotSelectedStudentIds([])}
+                                  className="text-[10px] text-rose-600 hover:underline font-extrabold cursor-pointer"
+                                >
+                                  Clear All
+                                </button>
+                              </div>
+                              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto pr-1">
+                                {spotSelectedStudentIds.map(id => {
+                                  const st = students.find(s => s.id === id);
+                                  if (!st) return null;
+                                  return (
+                                    <span
+                                      key={id}
+                                      className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white border border-rose-200 text-rose-900 rounded-lg text-xs font-bold shadow-2xs"
+                                    >
+                                      <span>{st.name} <span className="text-[10px] text-rose-600 font-extrabold">({st.class.toUpperCase()})</span></span>
+                                      <button
+                                        type="button"
+                                        onClick={() => setSpotSelectedStudentIds(prev => prev.filter(i => i !== id))}
+                                        className="hover:text-rose-600 text-slate-400 font-black ml-0.5 cursor-pointer"
+                                      >
+                                        ✕
+                                      </button>
+                                    </span>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                        )}
+
                         <div className="relative">
-                            <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Student Name</label>
+                            <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Student Name(s) (Multi-Select)</label>
                             <div className="relative">
                                 <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                                 <input 
@@ -5181,32 +5256,70 @@ Fine Amount: ${amount}`;
                                         setShowSpotDropdown(true);
                                     }}
                                     onFocus={() => setShowSpotDropdown(true)}
-                                    placeholder="Type student name..."
-                                    className="w-full p-4 pl-12 text-lg border border-slate-200 rounded-xl font-bold focus:outline-none focus:border-[#1A365D] bg-slate-50"
-                                    required
+                                    placeholder={spotSelectedStudentIds.length === 0 ? "Type student name to search & select..." : "Search & add more students..."}
+                                    className="w-full p-4 pl-12 text-sm sm:text-base border border-slate-200 rounded-xl font-bold focus:outline-none focus:border-[#1A365D] bg-slate-50"
                                 />
                             </div>
-                            {spotNameSearch && spotClass && showSpotDropdown && (
-                                <div className="mt-2 bg-white border border-slate-200 rounded-xl shadow-sm max-h-60 overflow-y-auto">
-                                    {students.filter(s => s.class === spotClass && s.name.toLowerCase().startsWith(spotNameSearch.toLowerCase())).map(s => (
-                                        <div 
-                                            key={s.id} 
-                                            className="p-4 hover:bg-slate-50 cursor-pointer font-bold text-slate-700 border-b border-slate-100 last:border-0 flex items-center justify-between transition-colors group"
+                            {spotClass && showSpotDropdown && (
+                                (() => {
+                                  const filtered = students.filter(s => {
+                                    const classMatch = spotClass === 'ALL' ? true : s.class === spotClass;
+                                    const nameMatch = !spotNameSearch.trim() || s.name.toLowerCase().includes(spotNameSearch.trim().toLowerCase());
+                                    return classMatch && nameMatch;
+                                  });
+
+                                  return (
+                                    <div className="mt-2 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100 z-50 absolute left-0 right-0">
+                                        {/* Select All Matching header */}
+                                        {filtered.length > 1 && (
+                                          <div 
+                                            className="p-3 bg-slate-50 hover:bg-slate-100 cursor-pointer font-extrabold text-xs text-[#1A365D] flex items-center justify-between transition-colors sticky top-0 border-b border-slate-200 z-10"
                                             onClick={() => {
-                                                setSpotNameSearch(s.name);
-                                                setShowSpotDropdown(false);
+                                              const matchingIds = filtered.map(s => s.id);
+                                              setSpotSelectedStudentIds(prev => Array.from(new Set([...prev, ...matchingIds])));
                                             }}
-                                        >
-                                            {s.name}
-                                            <CheckCircle2 className="w-5 h-5 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                        </div>
-                                    ))}
-                                    {students.filter(s => s.class === spotClass && s.name.toLowerCase().startsWith(spotNameSearch.toLowerCase())).length === 0 && (
-                                        <div className="p-4 text-center text-slate-400 font-semibold text-sm">
-                                            No matching student found in Class {spotClass.toUpperCase()}
-                                        </div>
-                                    )}
-                                </div>
+                                          >
+                                            <span>Select All {filtered.length} Matching Students</span>
+                                            <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-black">Select All</span>
+                                          </div>
+                                        )}
+
+                                        {filtered.map(s => {
+                                            const isSelected = spotSelectedStudentIds.includes(s.id);
+                                            return (
+                                                <div 
+                                                    key={s.id} 
+                                                    className={`p-3.5 hover:bg-rose-50/50 cursor-pointer font-bold text-sm text-slate-800 flex items-center justify-between transition-colors ${
+                                                      isSelected ? 'bg-rose-50/80 text-rose-950' : ''
+                                                    }`}
+                                                    onClick={() => {
+                                                        setSpotSelectedStudentIds(prev => 
+                                                          prev.includes(s.id) ? prev.filter(i => i !== s.id) : [...prev, s.id]
+                                                        );
+                                                    }}
+                                                >
+                                                    <div className="flex items-center gap-2.5">
+                                                      <div className={`w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                                                        isSelected ? 'bg-rose-600 border-rose-600' : 'border-slate-300 bg-white'
+                                                      }`}>
+                                                        {isSelected && <Check className="w-3 h-3 text-white stroke-[3]" />}
+                                                      </div>
+                                                      <span>{s.name}</span>
+                                                    </div>
+                                                    <span className="text-[11px] font-extrabold px-2 py-0.5 rounded-md bg-slate-100 border border-slate-200 text-slate-700">
+                                                        {s.class.toUpperCase()}
+                                                    </span>
+                                                </div>
+                                            );
+                                        })}
+                                        {filtered.length === 0 && (
+                                            <div className="p-4 text-center text-slate-400 font-semibold text-sm">
+                                                No matching student found {spotClass !== 'ALL' ? `in Class ${spotClass.toUpperCase()}` : ''}
+                                            </div>
+                                        )}
+                                    </div>
+                                  );
+                                })()
                             )}
                         </div>
                         <div className="relative">
