@@ -792,6 +792,7 @@ export default function App() {
   const [morningBlissDuration, setMorningBlissDuration] = useState(0); // seconds
   const [isStopwatchRunning, setIsStopwatchRunning] = useState(false);
   const [mbFromDate, setMbFromDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [mbToDate, setMbToDate] = useState(() => new Date().toISOString().split('T')[0]);
   const handleDownloadScreenshotCard = async (elementId, fileName = 'Report_Card.png') => {
     try {
       const cardElement = document.getElementById(elementId);
@@ -4672,7 +4673,16 @@ Fine Amount: ${amount}`;
                               {(() => {
                                 const todayDateStr = new Date().toISOString().split('T')[0];
                                 const rows = CLASSES.flatMap(c => {
-                                  const classStudents = students.filter(s => s.class === c && s.morningBlissMark != null && s.morningBlissMark !== '' && (s.summaryDate === todayDateStr || !s.summaryDate));
+                                  const classStudents = students.filter(s => {
+                                    if (s.class !== c) return false;
+                                    const hasMbData = (s.morningBlissMark != null && s.morningBlissMark !== '') || s.morningBlissScript != null || (s.morningBlissTopic && s.morningBlissTopic.trim() !== '');
+                                    if (!hasMbData) return false;
+
+                                    const studentDate = s.summaryDate || todayDateStr;
+                                    if (mbFromDate && studentDate < mbFromDate) return false;
+                                    if (mbToDate && studentDate > mbToDate) return false;
+                                    return true;
+                                  });
                                   if (classStudents.length === 0) return [];
 
                                   return classStudents.map(s => {
