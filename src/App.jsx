@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import LoginPage from './LoginPage.jsx';
 import * as XLSX from 'xlsx';
 import { jsPDF } from "jspdf";
@@ -659,6 +659,105 @@ export default function App() {
     setPerformanceSelectedStudents(prev => prev.filter(id => !idsToRemove.includes(id)));
     setRemoveSelectedRoomStudentIds([]);
     setShowRemoveRoomStudentModal(false);
+  };
+
+  // Dynamic Room List Management & Persistence
+  const DEFAULT_ROOM_NUMBERS = [19, 20, 21, 22, 123, 124, 125, 126, 127, 128, 107, 108, 109, 110, 214, 215, 216, 217, 230, 231, 232, 233, 234, 235].map(String);
+
+  const [hostelRoomList, setHostelRoomList] = useState(() => {
+    const saved = localStorage.getItem('student_tracker_room_list');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return DEFAULT_ROOM_NUMBERS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('student_tracker_room_list', JSON.stringify(hostelRoomList));
+  }, [hostelRoomList]);
+
+  // Modal & Edit States for Rooms
+  const [showAddNewRoomModal, setShowAddNewRoomModal] = useState(false);
+  const [newRoomNumberInput, setNewRoomNumberInput] = useState('');
+
+  const [showDeleteRoomModal, setShowDeleteRoomModal] = useState(false);
+  const [roomsToDelete, setRoomsToDelete] = useState([]);
+
+  const [showEditRoomNumberModal, setShowEditRoomNumberModal] = useState(false);
+  const [editingRoomOldNum, setEditingRoomOldNum] = useState('');
+  const [editingRoomNewNum, setEditingRoomNewNum] = useState('');
+
+  // Long press timer ref
+  const roomLongPressTimerRef = useRef(null);
+  const isLongPressTriggeredRef = useRef(false);
+
+  const handleRoomPressStart = (num) => {
+    isLongPressTriggeredRef.current = false;
+    roomLongPressTimerRef.current = setTimeout(() => {
+      isLongPressTriggeredRef.current = true;
+      setEditingRoomOldNum(String(num));
+      setEditingRoomNewNum(String(num));
+      setShowEditRoomNumberModal(true);
+    }, 500);
+  };
+
+  const handleRoomPressEnd = () => {
+    if (roomLongPressTimerRef.current) {
+      clearTimeout(roomLongPressTimerRef.current);
+      roomLongPressTimerRef.current = null;
+    }
+  };
+
+  const handleAddNewRoom = (e) => {
+    e.preventDefault();
+    const roomNumStr = newRoomNumberInput.trim();
+    if (!roomNumStr) return;
+
+    if (hostelRoomList.includes(roomNumStr)) {
+      alert(`Room ${roomNumStr} already exists!`);
+      return;
+    }
+
+    setHostelRoomList(prev => [...prev, roomNumStr]);
+    setNewRoomNumberInput('');
+    setShowAddNewRoomModal(false);
+  };
+
+  const handleDeleteRooms = () => {
+    if (roomsToDelete.length === 0) return;
+    setHostelRoomList(prev => prev.filter(num => !roomsToDelete.includes(num)));
+    setRoomsToDelete([]);
+    setShowDeleteRoomModal(false);
+  };
+
+  const handleEditRoomNumberSubmit = (e) => {
+    e.preventDefault();
+    const oldNum = editingRoomOldNum.trim();
+    const newNum = editingRoomNewNum.trim();
+    if (!newNum || oldNum === newNum) {
+      setShowEditRoomNumberModal(false);
+      return;
+    }
+
+    if (hostelRoomList.includes(newNum) && newNum !== oldNum) {
+      alert(`Room ${newNum} already exists!`);
+      return;
+    }
+
+    // Update room list
+    setHostelRoomList(prev => prev.map(num => num === oldNum ? newNum : num));
+
+    // Update room mapping if allocated students exist
+    setRoomStudentMapping(prev => {
+      const updated = { ...prev };
+      if (updated[oldNum] !== undefined) {
+        updated[newNum] = updated[oldNum];
+        delete updated[oldNum];
+      }
+      return updated;
+    });
+
+    setShowEditRoomNumberModal(false);
   };
   
   const [showAddIneligibleModal, setShowAddIneligibleModal] = useState(false);
@@ -5068,23 +5167,64 @@ Fine Amount: ${amount}`;
                   ) : !selectedRoom ? (
                     /* STEP 2: Show Room Buttons for Selected Hostel */
                     <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-                      <div className="flex items-center justify-between bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm shrink-0">
+                      {/* Header Card with Add Room, Delete Room, Change Hostel */}
+                      <div className="flex flex-wrap items-center justify-between bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm shrink-0 gap-2">
                         <div>
                           <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block">{selectedHostel}</span>
-                          <h3 className="text-[#1A365D] font-extrabold text-base">Select Room ({[19, 20, 21, 22, 123, 124, 125, 126, 127, 128, 107, 108, 109, 110, 214, 215, 216, 217, 230, 231, 232, 233, 234, 235].length} Rooms)</h3>
+                          <h3 className="text-[#1A365D] font-extrabold text-base">Select Room ({hostelRoomList.length} Rooms)</h3>
                         </div>
-                        <button
-                          onClick={() => setSelectedHostel(null)}
-                          className="text-xs font-bold text-slate-500 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl transition-colors"
-                        >
-                          Change Hostel
-                        </button>
+                        <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                          {/* 1. ADD ROOM BUTTON */}
+                          <button
+                            onClick={() => {
+                              setNewRoomNumberInput('');
+                              setShowAddNewRoomModal(true);
+                            }}
+                            className="text-xs font-extrabold text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-3 py-1.5 rounded-xl border border-emerald-300 transition-all flex items-center gap-1 shadow-xs active:scale-95"
+                            title="Add room"
+                          >
+                            <Plus className="w-3.5 h-3.5" />
+                            <span>Add Room</span>
+                          </button>
+
+                          {/* 2. DELETE ROOM BUTTON */}
+                          <button
+                            onClick={() => {
+                              setRoomsToDelete([]);
+                              setShowDeleteRoomModal(true);
+                            }}
+                            className="text-xs font-extrabold text-rose-700 bg-rose-100 hover:bg-rose-200 px-3 py-1.5 rounded-xl border border-rose-200 transition-all flex items-center gap-1 shadow-xs active:scale-95"
+                            title="Delete room"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Delete</span>
+                          </button>
+
+                          {/* 3. CHANGE HOSTEL */}
+                          <button
+                            onClick={() => setSelectedHostel(null)}
+                            className="text-xs font-bold text-slate-600 hover:text-slate-800 bg-slate-100 hover:bg-slate-200 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors"
+                          >
+                            Change Hostel
+                          </button>
+                        </div>
                       </div>
+
+                      <p className="text-[11px] font-bold text-slate-400 text-center -mt-1">
+                        💡 Long press any room card (or click edit icon) to rename room
+                      </p>
+
                       <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                        {[19, 20, 21, 22, 123, 124, 125, 126, 127, 128, 107, 108, 109, 110, 214, 215, 216, 217, 230, 231, 232, 233, 234, 235].map(num => (
+                        {hostelRoomList.map(num => (
                           <button
                             key={num}
+                            onMouseDown={() => handleRoomPressStart(num)}
+                            onMouseUp={() => handleRoomPressEnd()}
+                            onMouseLeave={() => handleRoomPressEnd()}
+                            onTouchStart={() => handleRoomPressStart(num)}
+                            onTouchEnd={() => handleRoomPressEnd()}
                             onClick={() => {
+                              if (isLongPressTriggeredRef.current) return;
                               const roomStr = `Room ${num}`;
                               setSelectedRoom(roomStr);
                               const allocated = roomStudentMapping[String(num)] !== undefined ? 
@@ -5092,8 +5232,22 @@ Fine Amount: ${amount}`;
                                 students.filter(s => String(s.room || s.roomNumber || '').trim() === String(num));
                               setPerformanceSelectedStudents(allocated.map(s => s.id));
                             }}
-                            className="p-4 bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 rounded-2xl shadow-sm hover:shadow transition-all active:scale-[0.96] flex flex-col items-center justify-center gap-1.5 group"
+                            className="p-4 bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 rounded-2xl shadow-sm hover:shadow transition-all active:scale-[0.96] flex flex-col items-center justify-center gap-1.5 group relative"
                           >
+                            {/* Small Edit Icon button */}
+                            <div
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingRoomOldNum(String(num));
+                                setEditingRoomNewNum(String(num));
+                                setShowEditRoomNumberModal(true);
+                              }}
+                              className="absolute top-1.5 right-1.5 p-1 rounded-md bg-slate-100 hover:bg-emerald-100 text-slate-400 hover:text-emerald-700 opacity-70 group-hover:opacity-100 transition-all"
+                              title="Edit Room Number"
+                            >
+                              <Pencil className="w-3 h-3" />
+                            </div>
+
                             <div className="w-9 h-9 rounded-xl bg-slate-100 group-hover:bg-emerald-600 text-slate-600 group-hover:text-white flex items-center justify-center transition-colors">
                               <School className="w-5 h-5" />
                             </div>
@@ -7925,6 +8079,170 @@ Fine Amount: ${amount}`;
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )}
+
+      {/* ADD NEW ROOM MODAL */}
+      {showAddNewRoomModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120] animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-emerald-600">
+                <PlusCircle className="w-6 h-6" />
+                <h3 className="font-extrabold text-lg">Add New Room</h3>
+              </div>
+              <button onClick={() => setShowAddNewRoomModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            </div>
+
+            <form onSubmit={handleAddNewRoom} className="flex flex-col gap-4">
+              <div>
+                <label className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-1.5">Room Number / Identifier</label>
+                <input
+                  type="text"
+                  value={newRoomNumberInput}
+                  onChange={e => setNewRoomNumberInput(e.target.value)}
+                  placeholder="e.g. 236, 101A, B-12..."
+                  className="w-full py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm text-slate-800 focus:outline-none focus:border-emerald-500"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowAddNewRoomModal(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <Plus className="w-4 h-4" /> Add Room
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* DELETE ROOM MODAL */}
+      {showDeleteRoomModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120] animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-rose-600">
+                <Trash2 className="w-6 h-6" />
+                <h3 className="font-extrabold text-lg">Delete Room(s)</h3>
+              </div>
+              <button onClick={() => setShowDeleteRoomModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            </div>
+
+            <div className="flex flex-col gap-4">
+              <p className="text-xs font-semibold text-slate-500">
+                Select room(s) you wish to remove from the room list:
+              </p>
+
+              <div className="max-h-60 overflow-y-auto grid grid-cols-3 gap-2 pr-1">
+                {hostelRoomList.map(num => {
+                  const isSelected = roomsToDelete.includes(num);
+                  return (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => {
+                        setRoomsToDelete(prev =>
+                          prev.includes(num) ? prev.filter(n => n !== num) : [...prev, num]
+                        );
+                      }}
+                      className={`p-3 rounded-xl border font-extrabold text-xs flex items-center justify-between transition-all ${
+                        isSelected
+                          ? 'bg-rose-50 border-rose-400 text-rose-950 shadow-xs'
+                          : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+                      }`}
+                    >
+                      <span>Room {num}</span>
+                      {isSelected && <Check className="w-4 h-4 text-rose-600" />}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className="flex items-center gap-3 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowDeleteRoomModal(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={roomsToDelete.length === 0}
+                  onClick={handleDeleteRooms}
+                  className={`flex-1 py-3 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all flex items-center justify-center gap-1.5 ${
+                    roomsToDelete.length === 0
+                      ? 'bg-slate-300 cursor-not-allowed shadow-none'
+                      : 'bg-rose-600 hover:bg-rose-700 active:scale-95'
+                  }`}
+                >
+                  <Trash2 className="w-4 h-4" /> Delete ({roomsToDelete.length})
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* EDIT ROOM NUMBER MODAL (LONG PRESS) */}
+      {showEditRoomNumberModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120] animate-fade-in">
+          <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2 text-indigo-600">
+                <Pencil className="w-6 h-6" />
+                <h3 className="font-extrabold text-lg">Change Room Number</h3>
+              </div>
+              <button onClick={() => setShowEditRoomNumberModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
+            </div>
+
+            <form onSubmit={handleEditRoomNumberSubmit} className="flex flex-col gap-4">
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+                <span className="font-semibold text-slate-500">Current Room: </span>
+                <span className="font-extrabold text-slate-800">Room {editingRoomOldNum}</span>
+              </div>
+
+              <div>
+                <label className="text-xs font-extrabold text-slate-500 uppercase tracking-wider block mb-1.5">New Room Number / Identifier</label>
+                <input
+                  type="text"
+                  value={editingRoomNewNum}
+                  onChange={e => setEditingRoomNewNum(e.target.value)}
+                  className="w-full py-3 px-4 bg-slate-50 border border-slate-200 rounded-xl font-bold text-sm text-slate-800 focus:outline-none focus:border-indigo-500"
+                  required
+                  autoFocus
+                />
+              </div>
+
+              <div className="flex items-center gap-3 pt-3">
+                <button
+                  type="button"
+                  onClick={() => setShowEditRoomNumberModal(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-extrabold text-xs uppercase tracking-wider shadow-md transition-all active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <Pencil className="w-4 h-4" /> Save Number
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
