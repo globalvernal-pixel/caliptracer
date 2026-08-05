@@ -5622,7 +5622,7 @@ Fine Amount: ${amount}`;
                 className="flex items-center justify-center gap-1.5 py-2.5 px-1 rounded-xl font-extrabold text-[11px] bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs active:scale-[0.98] transition-all"
               >
                 <Download className="w-3.5 h-3.5 shrink-0" />
-                Report
+                Download
               </button>
               
               {isAdminAuthenticated && (
