@@ -326,6 +326,41 @@ app.get('/api/history/:student_id', async (req, res) => {
   }
 });
 
+app.put('/api/history/:id', async (req, res) => {
+  const { id } = req.params;
+  const { event_type, amount, reason, date, student_id } = req.body;
+  try {
+    const result = await pool.query(`
+      UPDATE student_history
+      SET event_type = COALESCE($1, event_type),
+          amount = COALESCE($2, amount),
+          reason = COALESCE($3, reason),
+          date = COALESCE($4::timestamp, date),
+          student_id = COALESCE($5, student_id)
+      WHERE id = $6
+      RETURNING *
+    `, [event_type, amount, reason, date, student_id, id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'History record not found' });
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update history' });
+  }
+});
+
+app.delete('/api/history/:id', async (req, res) => {
+  const { id } = req.params;
+  try {
+    const result = await pool.query('DELETE FROM student_history WHERE id = $1 RETURNING *', [id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'History record not found' });
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to delete history' });
+  }
+});
+
+
 // 3.5 Morning Bliss Summary endpoints
 app.post('/api/morning-bliss/summary', async (req, res) => {
   const dateStr = req.body.date || new Date().toISOString().split('T')[0];

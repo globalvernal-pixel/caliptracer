@@ -1818,6 +1818,121 @@ Fine Amount: ${amount}`;
       fetchHistory();
     }
   }, [showIRModal, selectedIRStudent, irAssignedStudents]);
+
+  // Activities Report modal states
+  const [showActivitiesReportModal, setShowActivitiesReportModal] = useState(false);
+  const [activitiesLogs, setActivitiesLogs] = useState([]);
+  const [activityDateFilter, setActivityDateFilter] = useState('');
+  const [activityClassFilter, setActivityClassFilter] = useState('ALL');
+  const [activitySearchQuery, setActivitySearchQuery] = useState('');
+  const [activityEditModal, setActivityEditModal] = useState(null);
+  const [showAddActivityModal, setShowAddActivityModal] = useState(false);
+  const [newActivityForm, setNewActivityForm] = useState({
+    student_id: '',
+    event_type: 'tally',
+    amount: 1,
+    reason: '',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  const fetchAllActivities = async () => {
+    try {
+      const res = await fetch('/api/history');
+      if (res.ok) {
+        const data = await res.json();
+        setActivitiesLogs(data);
+      }
+    } catch (err) {
+      console.error('Error fetching activity history:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (showActivitiesReportModal) {
+      fetchAllActivities();
+    }
+  }, [showActivitiesReportModal]);
+
+  const handleSaveActivityEdit = async (e) => {
+    e.preventDefault();
+    if (!activityEditModal) return;
+    try {
+      const res = await fetch(`/api/history/${activityEditModal.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(activityEditModal)
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setActivitiesLogs(prev => prev.map(item => String(item.id) === String(updated.id) ? updated : item));
+        setActivityEditModal(null);
+      }
+    } catch (err) {
+      console.error('Failed to update activity:', err);
+    }
+  };
+
+  const handleDeleteActivity = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this activity record?')) return;
+    try {
+      const res = await fetch(`/api/history/${id}`, { method: 'DELETE' });
+      if (res.ok) {
+        setActivitiesLogs(prev => prev.filter(item => String(item.id) !== String(id)));
+      }
+    } catch (err) {
+      console.error('Failed to delete activity:', err);
+    }
+  };
+
+  const handleCreateActivity = async (e) => {
+    e.preventDefault();
+    if (!newActivityForm.student_id || !newActivityForm.event_type) return;
+    try {
+      const res = await fetch('/api/history', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newActivityForm)
+      });
+      if (res.ok) {
+        const created = await res.json();
+        setActivitiesLogs(prev => [created, ...prev]);
+        setShowAddActivityModal(false);
+        setNewActivityForm({ student_id: '', event_type: 'tally', amount: 1, reason: '', date: new Date().toISOString().split('T')[0] });
+      }
+    } catch (err) {
+      console.error('Failed to create activity:', err);
+    }
+  };
+
+  const filteredActivities = activitiesLogs.filter(log => {
+    // 1. Date Filter
+    if (activityDateFilter) {
+      const logDate = log.date ? new Date(log.date).toISOString().split('T')[0] : '';
+      if (logDate !== activityDateFilter) return false;
+    }
+
+    // 2. Class Filter
+    const studentObj = students.find(s => String(s.id) === String(log.student_id));
+    if (activityClassFilter !== 'ALL') {
+      if (!studentObj || studentObj.class.toLowerCase() !== activityClassFilter.toLowerCase()) {
+        return false;
+      }
+    }
+
+    // 3. Search Query
+    if (activitySearchQuery.trim()) {
+      const q = activitySearchQuery.toLowerCase().trim();
+      const sName = studentObj ? studentObj.name.toLowerCase() : (log.student_name || '').toLowerCase();
+      const sReason = (log.reason || '').toLowerCase();
+      const sEvent = (log.event_type || '').toLowerCase();
+      if (!sName.includes(q) && !sReason.includes(q) && !sEvent.includes(q)) {
+        return false;
+      }
+    }
+
+    return true;
+  });
+
   const [copyFeedback, setCopyFeedback] = useState('');
   const [saveStatus, setSaveStatus] = useState('');
 
@@ -5612,7 +5727,7 @@ Fine Amount: ${amount}`;
             </div>
 
             {/* Action Buttons (RBAC Filtered) */}
-            <div className={`grid ${isAdminAuthenticated ? 'grid-cols-4' : 'grid-cols-1'} gap-2`}>
+            <div className={`grid ${isAdminAuthenticated ? 'grid-cols-5' : 'grid-cols-2'} gap-2`}>
               <button
                 onClick={() => {
                   setDownloadSelectedClasses(CLASSES);
@@ -5623,6 +5738,14 @@ Fine Amount: ${amount}`;
               >
                 <Download className="w-3.5 h-3.5 shrink-0" />
                 Download
+              </button>
+
+              <button
+                onClick={() => setShowActivitiesReportModal(true)}
+                className="flex items-center justify-center gap-1.5 py-2.5 px-1 rounded-xl font-extrabold text-[11px] bg-teal-600 hover:bg-teal-700 text-white shadow-xs active:scale-[0.98] transition-all"
+              >
+                <FileText className="w-3.5 h-3.5 shrink-0" />
+                Report
               </button>
               
               {isAdminAuthenticated && (
@@ -8257,6 +8380,410 @@ Fine Amount: ${amount}`;
         </div>
       )}
 
+      {/* All Activities Report Modal */}
+      {showActivitiesReportModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 z-[150] animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-4xl shadow-2xl border border-slate-200 overflow-hidden flex flex-col h-[90vh]" onClick={e => e.stopPropagation()}>
+            
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-[#1A365D] text-white shrink-0">
+              <div className="flex items-center gap-2.5">
+                <FileText className="w-5 h-5 text-emerald-400" />
+                <div>
+                  <h2 className="text-base font-black tracking-wider uppercase">All Activities Report</h2>
+                  <p className="text-xs text-slate-300 font-medium">View, Filter, Edit & Delete Activity Records</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                {isAdminAuthenticated && (
+                  <button
+                    onClick={() => {
+                      setNewActivityForm({
+                        student_id: students[0]?.id || '',
+                        event_type: 'tally',
+                        amount: 1,
+                        reason: '',
+                        date: new Date().toISOString().split('T')[0]
+                      });
+                      setShowAddActivityModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition-all shadow-xs cursor-pointer"
+                  >
+                    <Plus className="w-4 h-4" />
+                    <span>Add Record</span>
+                  </button>
+                )}
+                <button 
+                  onClick={() => setShowActivitiesReportModal(false)} 
+                  className="text-slate-300 hover:text-white hover:bg-white/10 p-1.5 rounded-lg transition-colors cursor-pointer"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Filter Bar */}
+            <div className="p-4 bg-slate-50 border-b border-slate-200 grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
+              {/* Date Filter */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1 flex justify-between items-center">
+                  <span>Select Date</span>
+                  {activityDateFilter && (
+                    <button 
+                      type="button"
+                      onClick={() => setActivityDateFilter('')}
+                      className="text-[10px] text-blue-600 hover:underline capitalize cursor-pointer font-extrabold"
+                    >
+                      Show All Dates
+                    </button>
+                  )}
+                </label>
+                <input
+                  type="date"
+                  value={activityDateFilter}
+                  onChange={(e) => setActivityDateFilter(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-[#1A365D]"
+                />
+              </div>
+
+              {/* Class Filter */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Select Class
+                </label>
+                <select
+                  value={activityClassFilter}
+                  onChange={(e) => setActivityClassFilter(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-[#1A365D] uppercase"
+                >
+                  <option value="ALL">All Classes</option>
+                  {CLASSES.map(cls => (
+                    <option key={cls} value={cls}>Class {cls.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Search Query */}
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-1">
+                  Search Student / Reason
+                </label>
+                <div className="relative">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    placeholder="Type name or reason..."
+                    value={activitySearchQuery}
+                    onChange={(e) => setActivitySearchQuery(e.target.value)}
+                    className="w-full pl-8 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#1A365D]"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Activities Table List */}
+            <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50">
+              <div className="bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-[#1A365D]/5 border-b border-slate-200 text-[11px] font-extrabold uppercase text-[#1A365D]">
+                      <th className="p-3 w-28">Date</th>
+                      <th className="p-3">Student Name</th>
+                      <th className="p-3 w-20 text-center">Class</th>
+                      <th className="p-3">Activity & Amount</th>
+                      <th className="p-3">Reason</th>
+                      {isAdminAuthenticated && <th className="p-3 w-24 text-center">Actions</th>}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                    {filteredActivities.length > 0 ? (
+                      filteredActivities.map((log) => {
+                        const studentObj = students.find(s => String(s.id) === String(log.student_id));
+                        const studentName = studentObj ? studentObj.name : (log.student_name || `Student #${log.student_id}`);
+                        const studentClass = studentObj ? studentObj.class.toUpperCase() : (log.class ? log.class.toUpperCase() : '-');
+                        
+                        const d = log.date ? new Date(log.date) : new Date();
+                        const formattedDate = isNaN(d.getTime()) ? String(log.date) : `${d.getDate()}/${d.getMonth() + 1}/${String(d.getFullYear()).slice(-2)}`;
+
+                        let eventDisplay = '';
+                        const type = String(log.event_type || '').toLowerCase();
+                        if (type === 'star') {
+                          eventDisplay = `${log.amount || 1} STAR`;
+                        } else if (type === 'tally') {
+                          eventDisplay = `${log.amount || 1} TALLY`;
+                        } else if (type === 'spot fine' || type === 'spot_fine' || type === 'fine') {
+                          eventDisplay = `SPOT FINE ${log.amount ? '(₹' + log.amount + ')' : ''}`;
+                        } else if (type === 'spot') {
+                          eventDisplay = `SPOT`;
+                        } else if (type === 'sata') {
+                          eventDisplay = `${log.amount || 1} SATA`;
+                        } else {
+                          eventDisplay = `${log.amount && log.amount > 0 ? log.amount + ' ' : ''}${type.toUpperCase()}`;
+                        }
+
+                        return (
+                          <tr key={log.id} className="hover:bg-slate-50 transition-colors">
+                            <td className="p-3 font-mono text-slate-600 font-bold">{formattedDate}</td>
+                            <td className="p-3 font-extrabold text-slate-900 uppercase">{studentName}</td>
+                            <td className="p-3 text-center font-extrabold text-blue-800">
+                              <span className="px-2 py-0.5 rounded-md bg-blue-50 border border-blue-200 text-[10px]">
+                                {studentClass}
+                              </span>
+                            </td>
+                            <td className="p-3 font-extrabold text-[#1A365D]">
+                              <span className={`px-2.5 py-1 rounded-lg text-[11px] inline-block ${
+                                type.includes('star') || type.includes('sata') ? 'bg-amber-100 text-amber-800 border border-amber-200' :
+                                type.includes('fine') || type.includes('spot') ? 'bg-rose-100 text-rose-800 border border-rose-200' :
+                                type.includes('tally') ? 'bg-sky-100 text-sky-800 border border-sky-200' :
+                                'bg-purple-100 text-purple-800 border border-purple-200'
+                              }`}>
+                                {eventDisplay}
+                              </span>
+                            </td>
+                            <td className="p-3 text-slate-600 font-semibold">{log.reason || '-'}</td>
+                            {isAdminAuthenticated && (
+                              <td className="p-3 text-center">
+                                <div className="flex items-center justify-center gap-1">
+                                  <button
+                                    onClick={() => setActivityEditModal({ ...log, date: log.date ? new Date(log.date).toISOString().split('T')[0] : new Date().toISOString().split('T')[0] })}
+                                    className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors cursor-pointer"
+                                    title="Edit Activity"
+                                  >
+                                    <Pencil className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleDeleteActivity(log.id)}
+                                    className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors cursor-pointer"
+                                    title="Delete Activity"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                  </button>
+                                </div>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })
+                    ) : (
+                      <tr>
+                        <td colSpan={isAdminAuthenticated ? 6 : 5} className="p-8 text-center text-slate-400 font-medium italic">
+                          No activities found matching your filter criteria.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="p-4 bg-white border-t border-slate-200 flex justify-between items-center text-xs font-semibold text-slate-500 shrink-0">
+              <span>Showing {filteredActivities.length} activity records</span>
+              <button
+                onClick={() => setShowActivitiesReportModal(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl transition-all cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* Edit Activity Modal */}
+      {activityEditModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200] animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden flex flex-col scale-in">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-[#1A365D] text-white">
+              <div className="flex items-center gap-2">
+                <Pencil className="w-4 h-4 text-amber-400" />
+                <h3 className="font-extrabold tracking-wider text-sm uppercase">Edit Activity Record</h3>
+              </div>
+              <button onClick={() => setActivityEditModal(null)} className="text-slate-300 hover:text-white cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveActivityEdit} className="p-5 flex flex-col gap-4 text-xs font-semibold">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Student</label>
+                <select
+                  value={activityEditModal.student_id}
+                  onChange={(e) => setActivityEditModal({ ...activityEditModal, student_id: e.target.value })}
+                  className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-800 bg-slate-50"
+                  required
+                >
+                  {students.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.class.toUpperCase()})</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Activity Type</label>
+                  <input
+                    type="text"
+                    value={activityEditModal.event_type}
+                    onChange={(e) => setActivityEditModal({ ...activityEditModal, event_type: e.target.value })}
+                    placeholder="e.g. tally, star, spot fine"
+                    className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-800 bg-slate-50"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Amount</label>
+                  <input
+                    type="number"
+                    value={activityEditModal.amount}
+                    onChange={(e) => setActivityEditModal({ ...activityEditModal, amount: Number(e.target.value) })}
+                    className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-800 bg-slate-50"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Date</label>
+                <input
+                  type="date"
+                  value={activityEditModal.date}
+                  onChange={(e) => setActivityEditModal({ ...activityEditModal, date: e.target.value })}
+                  className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-800 bg-slate-50"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Reason / Note</label>
+                <input
+                  type="text"
+                  value={activityEditModal.reason || ''}
+                  onChange={(e) => setActivityEditModal({ ...activityEditModal, reason: e.target.value })}
+                  placeholder="Enter reason..."
+                  className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-800 bg-slate-50"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setActivityEditModal(null)}
+                  className="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-[#1A365D] hover:bg-blue-900 text-white font-bold rounded-xl shadow-sm cursor-pointer"
+                >
+                  Save Changes
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add New Activity Modal */}
+      {showAddActivityModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[200] animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl border border-slate-200 overflow-hidden flex flex-col scale-in">
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-emerald-700 text-white">
+              <div className="flex items-center gap-2">
+                <PlusCircle className="w-4 h-4" />
+                <h3 className="font-extrabold tracking-wider text-sm uppercase">Add Activity Record</h3>
+              </div>
+              <button onClick={() => setShowAddActivityModal(false)} className="text-emerald-100 hover:text-white cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleCreateActivity} className="p-5 flex flex-col gap-4 text-xs font-semibold">
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Select Student</label>
+                <select
+                  value={newActivityForm.student_id}
+                  onChange={(e) => setNewActivityForm({ ...newActivityForm, student_id: e.target.value })}
+                  className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-800 bg-slate-50"
+                  required
+                >
+                  <option value="" disabled>Choose student...</option>
+                  {students.map(s => (
+                    <option key={s.id} value={s.id}>{s.name} ({s.class.toUpperCase()})</option>
+                  ))}
+                </select>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Activity Type</label>
+                  <select
+                    value={newActivityForm.event_type}
+                    onChange={(e) => setNewActivityForm({ ...newActivityForm, event_type: e.target.value })}
+                    className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-800 bg-slate-50"
+                    required
+                  >
+                    <option value="tally">Tally</option>
+                    <option value="star">Star</option>
+                    <option value="spot fine">Spot Fine</option>
+                    <option value="n&o">N&O Tally</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Amount</label>
+                  <input
+                    type="number"
+                    value={newActivityForm.amount}
+                    onChange={(e) => setNewActivityForm({ ...newActivityForm, amount: Number(e.target.value) })}
+                    className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-800 bg-slate-50"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Date</label>
+                <input
+                  type="date"
+                  value={newActivityForm.date}
+                  onChange={(e) => setNewActivityForm({ ...newActivityForm, date: e.target.value })}
+                  className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-800 bg-slate-50"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-[11px] font-bold text-slate-600 uppercase mb-1">Reason / Note</label>
+                <input
+                  type="text"
+                  value={newActivityForm.reason}
+                  onChange={(e) => setNewActivityForm({ ...newActivityForm, reason: e.target.value })}
+                  placeholder="Enter reason..."
+                  className="w-full p-3 border border-slate-200 rounded-xl font-bold text-slate-800 bg-slate-50"
+                />
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddActivityModal(false)}
+                  className="px-4 py-2 bg-slate-100 text-slate-600 font-bold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-emerald-700 hover:bg-emerald-800 text-white font-bold rounded-xl shadow-sm cursor-pointer"
+                >
+                  Add Record
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+
