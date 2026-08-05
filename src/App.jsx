@@ -613,28 +613,74 @@ export default function App() {
   const [showAddRoomDropdown, setShowAddRoomDropdown] = useState(false);
   const [removeSelectedRoomStudentIds, setRemoveSelectedRoomStudentIds] = useState([]);
 
+  // Dynamic Room List Management per Hostel Block & Persistence
+  const DEFAULT_HOSTEL_BLOCK_ROOMS = {
+    'MAIN BLOCK BOYS': ['19', '20', '21', '22', '124', '125', '126', '127', '128', '108', '109', '110', '215', '216', '217', '231', '232', '233', '234', '235'],
+    'NEW BLOCK BOYS': ['101', '102', '103', '104', '105'],
+    'MAIN BLOCK GIRLS': ['G1', 'G2', 'G3', 'G4'],
+    'NEW BLOCK GIRLS': ['NG1', 'NG2', 'NG3']
+  };
+
+  const [hostelBlockRooms, setHostelBlockRooms] = useState(() => {
+    const saved = localStorage.getItem('student_tracker_hostel_block_rooms');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+    }
+    return DEFAULT_HOSTEL_BLOCK_ROOMS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('student_tracker_hostel_block_rooms', JSON.stringify(hostelBlockRooms));
+  }, [hostelBlockRooms]);
+
+  // Active Hostel Block Name and Room List
+  const activeHostelName = selectedHostel || 'MAIN BLOCK BOYS';
+  const hostelRoomList = hostelBlockRooms[activeHostelName] || [];
+
+  // Helper for room keys in roomStudentMapping:
+  const getHostelRoomKey = (hostelName, roomNum) => {
+    const h = hostelName || activeHostelName || 'MAIN BLOCK BOYS';
+    const r = String(roomNum).replace(/room\s*/i, '').trim();
+    return `${h}_${r}`;
+  };
+
+  const getHostelRoomStudents = (hostelName, roomNum) => {
+    const h = hostelName || activeHostelName || 'MAIN BLOCK BOYS';
+    const rKey = String(roomNum).replace(/room\s*/i, '').trim();
+    const fullKey = `${h}_${rKey}`;
+    if (roomStudentMapping[fullKey] !== undefined) {
+      return roomStudentMapping[fullKey];
+    }
+    if (roomStudentMapping[rKey] !== undefined && h === 'MAIN BLOCK BOYS') {
+      return roomStudentMapping[rKey];
+    }
+    return students.filter(s => String(s.room || s.roomNumber || '').trim() === rKey);
+  };
+
   // Handler to add student to current open room
   const handleAddStudentToPerformanceRoom = (e) => {
     e.preventDefault();
     if (!addRoomStudentName.trim()) return;
-    const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
-    if (!currentRoomKey) return;
+    const currentRoomNum = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
+    if (!currentRoomNum) return;
+
+    const fullRoomKey = getHostelRoomKey(activeHostelName, currentRoomNum);
 
     const newStudentObj = {
-      id: 'r' + currentRoomKey + '-' + Date.now(),
+      id: 'r' + currentRoomNum + '-' + Date.now(),
       name: addRoomStudentName.trim().toUpperCase(),
       class: addRoomStudentClass.trim().toUpperCase()
     };
 
     setRoomStudentMapping(prev => {
-      const existing = prev[currentRoomKey] || [];
+      const existing = prev[fullRoomKey] || prev[currentRoomNum] || [];
       if (existing.some(s => s.name.toUpperCase() === newStudentObj.name && s.class.toUpperCase() === newStudentObj.class)) {
         alert(`${newStudentObj.name} is already in ${selectedRoom}!`);
         return prev;
       }
       return {
         ...prev,
-        [currentRoomKey]: [...existing, newStudentObj]
+        [fullRoomKey]: [...existing, newStudentObj]
       };
     });
 
@@ -645,14 +691,17 @@ export default function App() {
   // Handler to remove students from current open room
   const handleRemoveStudentsFromPerformanceRoom = (idsToRemove) => {
     if (!idsToRemove || idsToRemove.length === 0) return;
-    const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
-    if (!currentRoomKey) return;
+    const currentRoomNum = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
+    if (!currentRoomNum) return;
+
+    const fullRoomKey = getHostelRoomKey(activeHostelName, currentRoomNum);
 
     setRoomStudentMapping(prev => {
-      const existing = prev[currentRoomKey] || [];
+      const existing = prev[fullRoomKey] || prev[currentRoomNum] || [];
+      const updatedList = existing.filter(s => !idsToRemove.includes(s.id));
       return {
         ...prev,
-        [currentRoomKey]: existing.filter(s => !idsToRemove.includes(s.id))
+        [fullRoomKey]: updatedList
       };
     });
 
@@ -660,21 +709,6 @@ export default function App() {
     setRemoveSelectedRoomStudentIds([]);
     setShowRemoveRoomStudentModal(false);
   };
-
-  // Dynamic Room List Management & Persistence
-  const DEFAULT_ROOM_NUMBERS = [19, 20, 21, 22, 123, 124, 125, 126, 127, 128, 107, 108, 109, 110, 214, 215, 216, 217, 230, 231, 232, 233, 234, 235].map(String);
-
-  const [hostelRoomList, setHostelRoomList] = useState(() => {
-    const saved = localStorage.getItem('student_tracker_room_list');
-    if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
-    }
-    return DEFAULT_ROOM_NUMBERS;
-  });
-
-  useEffect(() => {
-    localStorage.setItem('student_tracker_room_list', JSON.stringify(hostelRoomList));
-  }, [hostelRoomList]);
 
   // Modal & Edit States for Rooms
   const [showAddNewRoomModal, setShowAddNewRoomModal] = useState(false);
@@ -713,19 +747,27 @@ export default function App() {
     const roomNumStr = newRoomNumberInput.trim();
     if (!roomNumStr) return;
 
-    if (hostelRoomList.includes(roomNumStr)) {
-      alert(`Room ${roomNumStr} already exists!`);
+    const currentRooms = hostelBlockRooms[activeHostelName] || [];
+    if (currentRooms.includes(roomNumStr)) {
+      alert(`Room ${roomNumStr} already exists in ${activeHostelName}!`);
       return;
     }
 
-    setHostelRoomList(prev => [...prev, roomNumStr]);
+    setHostelBlockRooms(prev => ({
+      ...prev,
+      [activeHostelName]: [...(prev[activeHostelName] || []), roomNumStr]
+    }));
+
     setNewRoomNumberInput('');
     setShowAddNewRoomModal(false);
   };
 
   const handleDeleteRooms = () => {
     if (roomsToDelete.length === 0) return;
-    setHostelRoomList(prev => prev.filter(num => !roomsToDelete.includes(num)));
+    setHostelBlockRooms(prev => ({
+      ...prev,
+      [activeHostelName]: (prev[activeHostelName] || []).filter(num => !roomsToDelete.includes(num))
+    }));
     setRoomsToDelete([]);
     setShowDeleteRoomModal(false);
   };
@@ -739,20 +781,27 @@ export default function App() {
       return;
     }
 
-    if (hostelRoomList.includes(newNum) && newNum !== oldNum) {
-      alert(`Room ${newNum} already exists!`);
+    const currentRooms = hostelBlockRooms[activeHostelName] || [];
+    if (currentRooms.includes(newNum) && newNum !== oldNum) {
+      alert(`Room ${newNum} already exists in ${activeHostelName}!`);
       return;
     }
 
-    // Update room list
-    setHostelRoomList(prev => prev.map(num => num === oldNum ? newNum : num));
+    // Update room list for active hostel block
+    setHostelBlockRooms(prev => ({
+      ...prev,
+      [activeHostelName]: (prev[activeHostelName] || []).map(num => num === oldNum ? newNum : num)
+    }));
 
-    // Update room mapping if allocated students exist
+    // Update room student mapping
+    const oldKey = getHostelRoomKey(activeHostelName, oldNum);
+    const newKey = getHostelRoomKey(activeHostelName, newNum);
+
     setRoomStudentMapping(prev => {
       const updated = { ...prev };
-      if (updated[oldNum] !== undefined) {
-        updated[newNum] = updated[oldNum];
-        delete updated[oldNum];
+      if (updated[oldKey] !== undefined) {
+        updated[newKey] = updated[oldKey];
+        delete updated[oldKey];
       }
       return updated;
     });
@@ -5371,9 +5420,7 @@ Fine Amount: ${amount}`;
                               if (isLongPressTriggeredRef.current) return;
                               const roomStr = `Room ${num}`;
                               setSelectedRoom(roomStr);
-                              const allocated = roomStudentMapping[String(num)] !== undefined ? 
-                                roomStudentMapping[String(num)] : 
-                                students.filter(s => String(s.room || s.roomNumber || '').trim() === String(num));
+                              const allocated = getHostelRoomStudents(selectedHostel, num);
                               setPerformanceSelectedStudents(allocated.map(s => s.id));
                             }}
                             className="p-4 bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 rounded-2xl shadow-sm hover:shadow transition-all active:scale-[0.96] flex flex-col items-center justify-center gap-1.5 group relative"
@@ -5404,11 +5451,10 @@ Fine Amount: ${amount}`;
                     /* STEP 3: Student Selection & Room Actions inside Selected Room */
                     (() => {
                       const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
-                      const allocatedRoomStudents = roomStudentMapping[currentRoomKey] !== undefined ? 
-                        roomStudentMapping[currentRoomKey] : 
-                        students.filter(s => String(s.room || s.roomNumber || '').trim() === currentRoomKey);
+                      const allocatedRoomStudents = getHostelRoomStudents(selectedHostel, currentRoomKey);
                       
                       const selectedCount = performanceSelectedStudents.length;
+
 
                       return (
                         <div className="flex-1 overflow-hidden flex flex-col bg-slate-50 relative">
@@ -8240,9 +8286,14 @@ Fine Amount: ${amount}`;
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120] animate-fade-in">
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-emerald-600">
-                <PlusCircle className="w-6 h-6" />
-                <h3 className="font-extrabold text-lg">Add New Room</h3>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-black text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-md uppercase tracking-wider self-start">
+                  {activeHostelName}
+                </span>
+                <div className="flex items-center gap-2 text-emerald-600">
+                  <PlusCircle className="w-5 h-5" />
+                  <h3 className="font-extrabold text-lg">Add New Room</h3>
+                </div>
               </div>
               <button onClick={() => setShowAddNewRoomModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
             </div>
@@ -8286,12 +8337,18 @@ Fine Amount: ${amount}`;
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[120] animate-fade-in">
           <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-5" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2 text-rose-600">
-                <Trash2 className="w-6 h-6" />
-                <h3 className="font-extrabold text-lg">Delete Room(s)</h3>
+              <div className="flex flex-col gap-1">
+                <span className="text-[10px] font-black text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-md uppercase tracking-wider self-start">
+                  {activeHostelName}
+                </span>
+                <div className="flex items-center gap-2 text-rose-600">
+                  <Trash2 className="w-5 h-5" />
+                  <h3 className="font-extrabold text-lg">Delete Room(s)</h3>
+                </div>
               </div>
               <button onClick={() => setShowDeleteRoomModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
             </div>
+
 
             <div className="flex flex-col gap-4">
               <p className="text-xs font-semibold text-slate-500">
