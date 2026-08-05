@@ -616,15 +616,28 @@ export default function App() {
   // Dynamic Room List Management per Hostel Block & Persistence
   const DEFAULT_HOSTEL_BLOCK_ROOMS = {
     'MAIN BLOCK BOYS': ['19', '20', '21', '22', '124', '125', '126', '127', '128', '108', '109', '110', '215', '216', '217', '231', '232', '233', '234', '235'],
-    'NEW BLOCK BOYS': ['101', '102', '103', '104', '105'],
-    'MAIN BLOCK GIRLS': ['G1', 'G2', 'G3', 'G4'],
-    'NEW BLOCK GIRLS': ['NG1', 'NG2', 'NG3']
+    'NEW BLOCK BOYS': [],
+    'MAIN BLOCK GIRLS': [],
+    'NEW BLOCK GIRLS': []
   };
 
   const [hostelBlockRooms, setHostelBlockRooms] = useState(() => {
+    // Clean up old single flat room list key so it doesn't pollute hostel blocks
+    try { localStorage.removeItem('student_tracker_room_list'); } catch (e) {}
+
     const saved = localStorage.getItem('student_tracker_hostel_block_rooms');
     if (saved) {
-      try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      try { 
+        const parsed = JSON.parse(saved); 
+        if (parsed && typeof parsed === 'object') {
+          return {
+            'MAIN BLOCK BOYS': parsed['MAIN BLOCK BOYS'] || DEFAULT_HOSTEL_BLOCK_ROOMS['MAIN BLOCK BOYS'],
+            'NEW BLOCK BOYS': parsed['NEW BLOCK BOYS'] || [],
+            'MAIN BLOCK GIRLS': parsed['MAIN BLOCK GIRLS'] || [],
+            'NEW BLOCK GIRLS': parsed['NEW BLOCK GIRLS'] || []
+          };
+        }
+      } catch (e) { console.error(e); }
     }
     return DEFAULT_HOSTEL_BLOCK_ROOMS;
   });
@@ -648,14 +661,24 @@ export default function App() {
     const h = hostelName || activeHostelName || 'MAIN BLOCK BOYS';
     const rKey = String(roomNum).replace(/room\s*/i, '').trim();
     const fullKey = `${h}_${rKey}`;
+    
+    // 1. Strict per-hostel room mapping key (e.g. "NEW BLOCK BOYS_101")
     if (roomStudentMapping[fullKey] !== undefined) {
       return roomStudentMapping[fullKey];
     }
-    if (roomStudentMapping[rKey] !== undefined && h === 'MAIN BLOCK BOYS') {
-      return roomStudentMapping[rKey];
+    
+    // 2. Legacy fallback ONLY for MAIN BLOCK BOYS seed mapping
+    if (h === 'MAIN BLOCK BOYS') {
+      if (roomStudentMapping[rKey] !== undefined) {
+        return roomStudentMapping[rKey];
+      }
+      return students.filter(s => String(s.room || s.roomNumber || '').trim() === rKey);
     }
-    return students.filter(s => String(s.room || s.roomNumber || '').trim() === rKey);
+
+    // 3. For any other block (NEW BLOCK BOYS, etc.), return empty [] until students are added to this specific block room
+    return [];
   };
+
 
   // Handler to add student to current open room
   const handleAddStudentToPerformanceRoom = (e) => {
@@ -5407,47 +5430,69 @@ Fine Amount: ${amount}`;
                         💡 Long press any room card (or click edit icon) to rename room
                       </p>
 
-                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
-                        {hostelRoomList.map(num => (
-                          <button
-                            key={num}
-                            onMouseDown={() => handleRoomPressStart(num)}
-                            onMouseUp={() => handleRoomPressEnd()}
-                            onMouseLeave={() => handleRoomPressEnd()}
-                            onTouchStart={() => handleRoomPressStart(num)}
-                            onTouchEnd={() => handleRoomPressEnd()}
-                            onClick={() => {
-                              if (isLongPressTriggeredRef.current) return;
-                              const roomStr = `Room ${num}`;
-                              setSelectedRoom(roomStr);
-                              const allocated = getHostelRoomStudents(selectedHostel, num);
-                              setPerformanceSelectedStudents(allocated.map(s => s.id));
-                            }}
-                            className="p-4 bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 rounded-2xl shadow-sm hover:shadow transition-all active:scale-[0.96] flex flex-col items-center justify-center gap-1.5 group relative"
-                          >
-                            {/* Small Edit Icon button */}
-                            <div
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingRoomOldNum(String(num));
-                                setEditingRoomNewNum(String(num));
-                                setShowEditRoomNumberModal(true);
+                      {hostelRoomList.length > 0 ? (
+                        <div className="grid grid-cols-3 sm:grid-cols-5 gap-3">
+                          {hostelRoomList.map(num => (
+                            <button
+                              key={num}
+                              onMouseDown={() => handleRoomPressStart(num)}
+                              onMouseUp={() => handleRoomPressEnd()}
+                              onMouseLeave={() => handleRoomPressEnd()}
+                              onTouchStart={() => handleRoomPressStart(num)}
+                              onTouchEnd={() => handleRoomPressEnd()}
+                              onClick={() => {
+                                if (isLongPressTriggeredRef.current) return;
+                                const roomStr = `Room ${num}`;
+                                setSelectedRoom(roomStr);
+                                const allocated = getHostelRoomStudents(selectedHostel, num);
+                                setPerformanceSelectedStudents(allocated.map(s => s.id));
                               }}
-                              className="absolute top-1.5 right-1.5 p-1 rounded-md bg-slate-100 hover:bg-emerald-100 text-slate-400 hover:text-emerald-700 opacity-70 group-hover:opacity-100 transition-all"
-                              title="Edit Room Number"
+                              className="p-4 bg-white border border-slate-200 hover:border-emerald-500 hover:bg-emerald-50/40 rounded-2xl shadow-sm hover:shadow transition-all active:scale-[0.96] flex flex-col items-center justify-center gap-1.5 group relative"
                             >
-                              <Pencil className="w-3 h-3" />
-                            </div>
+                              {/* Small Edit Icon button */}
+                              <div
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingRoomOldNum(String(num));
+                                  setEditingRoomNewNum(String(num));
+                                  setShowEditRoomNumberModal(true);
+                                }}
+                                className="absolute top-1.5 right-1.5 p-1 rounded-md bg-slate-100 hover:bg-emerald-100 text-slate-400 hover:text-emerald-700 opacity-70 group-hover:opacity-100 transition-all"
+                                title="Edit Room Number"
+                              >
+                                <Pencil className="w-3 h-3" />
+                              </div>
 
-                            <div className="w-9 h-9 rounded-xl bg-slate-100 group-hover:bg-emerald-600 text-slate-600 group-hover:text-white flex items-center justify-center transition-colors">
-                              <School className="w-5 h-5" />
-                            </div>
-                            <span className="font-extrabold text-xs text-slate-800 group-hover:text-emerald-700">Room {num}</span>
+                              <div className="w-9 h-9 rounded-xl bg-slate-100 group-hover:bg-emerald-600 text-slate-600 group-hover:text-white flex items-center justify-center transition-colors">
+                                <School className="w-5 h-5" />
+                              </div>
+                              <span className="font-extrabold text-xs text-slate-800 group-hover:text-emerald-700">Room {num}</span>
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-8 text-center bg-white rounded-2xl border border-slate-200 shadow-sm flex flex-col items-center justify-center gap-3 my-auto">
+                          <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <School className="w-6 h-6" />
+                          </div>
+                          <h4 className="font-extrabold text-slate-800 text-base">No Rooms in {selectedHostel}</h4>
+                          <p className="text-xs font-semibold text-slate-500 max-w-xs leading-relaxed">
+                            There are currently no rooms created for <strong>{selectedHostel}</strong>.
+                          </p>
+                          <button
+                            onClick={() => {
+                              setNewRoomNumberInput('');
+                              setShowAddNewRoomModal(true);
+                            }}
+                            className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs rounded-xl shadow-xs transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer mt-1"
+                          >
+                            <Plus className="w-4 h-4" /> Add Room Now
                           </button>
-                        ))}
-                      </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
+
                     /* STEP 3: Student Selection & Room Actions inside Selected Room */
                     (() => {
                       const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
