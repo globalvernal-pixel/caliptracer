@@ -565,6 +565,96 @@ export default function App() {
     setSelectedMentorForDelete(null);
     setShowDeleteMentorModal(false);
   };
+
+  // Class Mentors state & handlers
+  const [mentorTypeTab, setMentorTypeTab] = useState('room'); // 'room' | 'class'
+  const [classMentors, setClassMentors] = useState(() => {
+    const saved = localStorage.getItem('student_tracker_class_mentors');
+    if (saved) {
+      try { return JSON.parse(saved); } catch (e) {}
+    }
+    return [];
+  });
+
+  useEffect(() => {
+    localStorage.setItem('student_tracker_class_mentors', JSON.stringify(classMentors));
+  }, [classMentors]);
+
+  const [selectedClassMentorIndex, setSelectedClassMentorIndex] = useState(null);
+  const [showAddClassMentorModal, setShowAddClassMentorModal] = useState(false);
+  const [newClassMentor, setNewClassMentor] = useState({ name: '', classAssigned: '' });
+  const [showDeleteClassMentorModal, setShowDeleteClassMentorModal] = useState(false);
+  const [selectedClassMentorForDelete, setSelectedClassMentorForDelete] = useState(null);
+  const [classMentorSearch, setClassMentorSearch] = useState('');
+
+  const handleAddClassMentor = (e) => {
+    e.preventDefault();
+    if (!newClassMentor.name.trim() || !newClassMentor.classAssigned.trim()) return;
+    const newCM = {
+      id: 'cm-' + Date.now(),
+      name: newClassMentor.name.trim(),
+      classAssigned: newClassMentor.classAssigned.trim(),
+      createdAt: new Date().toISOString().split('T')[0]
+    };
+    setClassMentors([...classMentors, newCM]);
+    setNewClassMentor({ name: '', classAssigned: '' });
+    setShowAddClassMentorModal(false);
+  };
+
+  const handleDeleteClassMentor = (e) => {
+    e.preventDefault();
+    if (!selectedClassMentorForDelete) return;
+    setClassMentors(classMentors.filter(cm => cm.id !== selectedClassMentorForDelete));
+    setSelectedClassMentorForDelete(null);
+    setShowDeleteClassMentorModal(false);
+  };
+
+  const handleDownloadClassMentorSheet = (classMentor) => {
+    const classStus = students.filter(s => (s.class || '').toLowerCase() === (classMentor.classAssigned || '').toLowerCase());
+    const data = classStus.map((s, idx) => ({
+      'Sl No': idx + 1,
+      'Student Name': s.name,
+      'Class': (s.class || '').toUpperCase(),
+      'Room Number': s.roomNumber || 'N/A',
+      'Hostel Block': s.hostelBlock || 'N/A',
+      'Tally Count': s.tally || 0,
+      'Total Fine (₹)': s.fine || 0,
+      'Status': s.ineligible ? `Ineligible (${s.ineligibleReason || ''})` : 'Active'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, `Class_${classMentor.classAssigned.toUpperCase()}`);
+    XLSX.writeFile(wb, `Class_Mentor_${classMentor.name}_${classMentor.classAssigned.toUpperCase()}.xlsx`);
+  };
+
+  const handleGenerateClassMentorIR = (classMentor) => {
+    const classStus = students.filter(s => (s.class || '').toLowerCase() === (classMentor.classAssigned || '').toLowerCase());
+    const today = new Date();
+    const dateStr = today.toLocaleDateString('en-GB');
+    
+    let text = `🚨 *CLASS MENTOR IR / SUMMARY REPORT*\n`;
+    text += `👤 *Mentor:* ${classMentor.name}\n`;
+    text += `🏫 *Class:* CLASS ${classMentor.classAssigned.toUpperCase()}\n`;
+    text += `📅 *Date:* ${dateStr}\n`;
+    text += `👥 *Total Students:* ${classStus.length}\n\n`;
+
+    if (classStus.length === 0) {
+      text += `No students enrolled in Class ${classMentor.classAssigned.toUpperCase()}.\n`;
+    } else {
+      text += `*STUDENT DETAILS & TALLIES:*\n`;
+      classStus.forEach((s, idx) => {
+        text += `${idx + 1}. *${s.name}* (Room: ${s.roomNumber || 'N/A'})\n`;
+        text += `   • Tally: ${s.tally || 0} | Fine: ₹${s.fine || 0}\n`;
+        if (s.ineligible) {
+          text += `   • ⚠️ Ineligible: ${s.ineligibleReason || 'Flagged'}\n`;
+        }
+      });
+    }
+
+    setSummaryText(text.trim());
+    setShowSummaryModal(true);
+  };
   const [performanceView, setPerformanceView] = useState(null); // 'neat', 'room', 'ineligible', null
   const [selectedHostel, setSelectedHostel] = useState(null); // 'MAIN BLOCK BOYS', 'NEW BLOCK BOYS', 'MAIN BLOCK GIRLS', 'NEW BLOCK GIRLS'
   const [selectedRoom, setSelectedRoom] = useState(null); // 'Room 1' .. 'Room 25'
@@ -3628,58 +3718,279 @@ ${selectedStudentSummaries.join('\n')}`;
 
             {/* Selected Mentor Content */}
             {(() => {
-              if (selectedMentorIndex === null) {
+              if (selectedClassMentorIndex !== null) {
+                const classMentor = classMentors[selectedClassMentorIndex];
+                const classStudents = students.filter(s => (s.class || '').toLowerCase() === (classMentor.classAssigned || '').toLowerCase());
+                const filteredClassStudents = classStudents.filter(s => 
+                  s.name.toLowerCase().includes(classMentorSearch.toLowerCase()) ||
+                  (s.roomNumber || '').toLowerCase().includes(classMentorSearch.toLowerCase())
+                );
+
                 return (
                   <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-                    {/* All Mentors Quick Directory */}
-                    <div className="flex flex-col gap-3">
-                      <div className="flex items-center justify-between mb-4 mt-2">
-                        <span className="text-sm font-extrabold text-[#1A365D] uppercase tracking-wider flex items-center gap-2">
-                          <UserCheck className="w-5 h-5 text-[#1A365D]" />
-                          All Mentors ({mentors.length})
-                        </span>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => setShowAddMentorModal(true)}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-[#1A365D] hover:bg-[#2A4365] text-white text-xs font-extrabold rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
-                          >
-                            <Plus className="w-4 h-4" />
-                            <span>Add Mentor</span>
-                          </button>
-                          <button 
-                            onClick={() => setShowDeleteMentorModal(true)}
-                            className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-rose-600 text-xs font-extrabold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                            <span>Remove</span>
-                          </button>
+                    {/* Header bar */}
+                    <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-3 rounded-xl border border-slate-200 shadow-sm shrink-0">
+                      <div className="flex items-center gap-3">
+                        <button 
+                          onClick={() => setSelectedClassMentorIndex(null)}
+                          className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-[#1A365D] hover:text-white transition-colors"
+                          title="Go Back"
+                        >
+                          <ChevronLeft className="w-5 h-5" />
+                        </button>
+                        <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white text-sm font-extrabold flex items-center justify-center shadow-sm shrink-0">
+                          {getInitials(classMentor.name)}
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-extrabold text-[#333333] leading-tight">{classMentor.name}</h3>
+                          <p className="text-[11px] text-indigo-600 font-bold mt-0.5 uppercase tracking-wide">
+                            Class Mentor • Class {classMentor.classAssigned.toUpperCase()} ({classStudents.length} Students)
+                          </p>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 gap-3">
-                        {mentors.map((m, mIdx) => (
-                          <button 
-                            key={m.id}
-                            onClick={() => setSelectedMentorIndex(mIdx)}
-                            className="group relative bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between transition-all duration-200 hover:shadow-md hover:border-blue-300 active:scale-[0.98] overflow-hidden"
-                          >
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-xl text-lg font-extrabold flex items-center justify-center transition-all duration-300 bg-blue-50 text-blue-700 group-hover:scale-110 group-hover:bg-blue-100 shadow-inner">
-                                {getInitials(m.name)}
-                              </div>
-                              <div className="text-left flex flex-col justify-center">
-                                <h4 className="text-[15px] font-extrabold text-slate-800 tracking-tight leading-tight">{m.name}</h4>
-                                <span className="text-xs text-slate-500 font-semibold mt-0.5">{m.role || 'Mentor'}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2 group-hover:-translate-x-1 transition-all duration-300">
-                               {m.roomNumber && <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">{m.roomNumber.toUpperCase()}</span>}
-                               <ChevronRight className="w-5 h-5 text-blue-500 opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                            </div>
-                          </button>
-                        ))}
+                      {/* Action buttons: Download & IR */}
+                      <div className="flex items-center gap-2">
+                        <button 
+                          onClick={() => handleDownloadClassMentorSheet(classMentor)}
+                          className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-sm transition-all active:scale-[0.98]"
+                          title="Download Excel Sheet"
+                        >
+                          <Download className="w-4 h-4" />
+                          <span>Download</span>
+                        </button>
+                        <button 
+                          onClick={() => handleGenerateClassMentorIR(classMentor)}
+                          className="flex items-center gap-1.5 px-3.5 py-2 bg-[#1A365D] hover:bg-[#2A4365] text-white text-xs font-extrabold rounded-xl shadow-sm transition-all active:scale-[0.98]"
+                          title="Mentor Summary IR Report"
+                        >
+                          <FileText className="w-4 h-4" />
+                          <span>IR Button</span>
+                        </button>
                       </div>
                     </div>
+
+                    {/* Class Sheet Content */}
+                    <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex flex-col gap-3 flex-1 overflow-hidden">
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <Table className="w-4 h-4 text-indigo-600" />
+                          <h4 className="text-xs font-extrabold text-slate-800 uppercase tracking-wider">
+                            Class {classMentor.classAssigned.toUpperCase()} Student Sheet
+                          </h4>
+                        </div>
+                        <input
+                          type="text"
+                          placeholder="Search student or room..."
+                          value={classMentorSearch}
+                          onChange={(e) => setClassMentorSearch(e.target.value)}
+                          className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-indigo-500 w-48"
+                        />
+                      </div>
+
+                      <div className="overflow-x-auto flex-1 border border-slate-200 rounded-xl">
+                        <table className="w-full text-left text-xs border-collapse">
+                          <thead>
+                            <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
+                              <th className="p-3 w-12 text-center">#</th>
+                              <th className="p-3">Student Name</th>
+                              <th className="p-3">Class</th>
+                              <th className="p-3">Room / Hostel</th>
+                              <th className="p-3 text-center">Tally</th>
+                              <th className="p-3 text-right">Fine (₹)</th>
+                              <th className="p-3 text-center">Status</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-100 font-medium">
+                            {filteredClassStudents.length > 0 ? (
+                              filteredClassStudents.map((st, idx) => (
+                                <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="p-3 text-center text-slate-400 font-bold">{idx + 1}</td>
+                                  <td className="p-3 font-extrabold text-slate-800">{st.name}</td>
+                                  <td className="p-3 uppercase font-bold text-indigo-600">{st.class}</td>
+                                  <td className="p-3 text-slate-500 font-semibold">{st.roomNumber || 'N/A'} {st.hostelBlock ? `(${st.hostelBlock})` : ''}</td>
+                                  <td className="p-3 text-center">
+                                    <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md font-bold text-[11px]">
+                                      {st.tally || 0}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right font-extrabold text-rose-600">₹{st.fine || 0}</td>
+                                  <td className="p-3 text-center">
+                                    {st.ineligible ? (
+                                      <span className="px-2 py-0.5 bg-rose-100 text-rose-700 rounded-md font-bold text-[10px]" title={st.ineligibleReason}>
+                                        Ineligible
+                                      </span>
+                                    ) : (
+                                      <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-md font-bold text-[10px]">
+                                        Active
+                                      </span>
+                                    )}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan="7" className="p-8 text-center text-slate-400 text-xs">
+                                  No students found for Class {classMentor.classAssigned.toUpperCase()}.
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              if (selectedMentorIndex === null) {
+                return (
+                  <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+                    {/* Top Switcher: Room Mentors vs Class Mentors */}
+                    <div className="flex bg-slate-200/60 p-1 rounded-xl shrink-0">
+                      <button
+                        onClick={() => setMentorTypeTab('room')}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                          mentorTypeTab === 'room'
+                            ? 'bg-white text-[#1A365D] shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        👥 Room Mentors ({mentors.length})
+                      </button>
+                      <button
+                        onClick={() => setMentorTypeTab('class')}
+                        className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
+                          mentorTypeTab === 'class'
+                            ? 'bg-white text-[#1A365D] shadow-sm'
+                            : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                      >
+                        🏫 Class Mentors ({classMentors.length})
+                      </button>
+                    </div>
+
+                    {mentorTypeTab === 'room' ? (
+                      /* All Mentors Quick Directory */
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between mb-4 mt-2">
+                          <span className="text-sm font-extrabold text-[#1A365D] uppercase tracking-wider flex items-center gap-2">
+                            <UserCheck className="w-5 h-5 text-[#1A365D]" />
+                            All Mentors ({mentors.length})
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => setShowAddMentorModal(true)}
+                              className="flex items-center gap-1.5 px-4 py-2 bg-[#1A365D] hover:bg-[#2A4365] text-white text-xs font-extrabold rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Add Mentor</span>
+                            </button>
+                            <button 
+                              onClick={() => setShowDeleteMentorModal(true)}
+                              className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-rose-600 text-xs font-extrabold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span>Remove</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                          {mentors.map((m, mIdx) => (
+                            <button 
+                              key={m.id}
+                              onClick={() => setSelectedMentorIndex(mIdx)}
+                              className="group relative bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between transition-all duration-200 hover:shadow-md hover:border-blue-300 active:scale-[0.98] overflow-hidden"
+                            >
+                              <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-xl text-lg font-extrabold flex items-center justify-center transition-all duration-300 bg-blue-50 text-blue-700 group-hover:scale-110 group-hover:bg-blue-100 shadow-inner">
+                                  {getInitials(m.name)}
+                                </div>
+                                <div className="text-left flex flex-col justify-center">
+                                  <h4 className="text-[15px] font-extrabold text-slate-800 tracking-tight leading-tight">{m.name}</h4>
+                                  <span className="text-xs text-slate-500 font-semibold mt-0.5">{m.role || 'Mentor'}</span>
+                                </div>
+                              </div>
+                              <div className="flex items-center gap-2 group-hover:-translate-x-1 transition-all duration-300">
+                                 {m.roomNumber && <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-md">{m.roomNumber.toUpperCase()}</span>}
+                                 <ChevronRight className="w-5 h-5 text-blue-500 opacity-0 group-hover:opacity-100 transition-all duration-300" />
+                              </div>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    ) : (
+                      /* Class Mentors View */
+                      <div className="flex flex-col gap-3">
+                        <div className="flex items-center justify-between mb-4 mt-2">
+                          <span className="text-sm font-extrabold text-[#1A365D] uppercase tracking-wider flex items-center gap-2">
+                            <School className="w-5 h-5 text-[#1A365D]" />
+                            All Class Mentors ({classMentors.length})
+                          </span>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => setShowAddClassMentorModal(true)}
+                              className="flex items-center gap-1.5 px-4 py-2 bg-[#1A365D] hover:bg-[#2A4365] text-white text-xs font-extrabold rounded-xl shadow-md hover:shadow-lg transition-all active:scale-[0.98]"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Add Class Mentor</span>
+                            </button>
+                            <button 
+                              onClick={() => setShowDeleteClassMentorModal(true)}
+                              className="flex items-center gap-1.5 px-4 py-2 bg-rose-50 border border-rose-200 hover:bg-rose-600 hover:text-white hover:border-rose-600 text-rose-600 text-xs font-extrabold rounded-xl shadow-sm hover:shadow-md transition-all active:scale-[0.98]"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              <span>Remove</span>
+                            </button>
+                          </div>
+                        </div>
+
+                        {classMentors.length === 0 ? (
+                          <div className="text-center py-12 flex flex-col items-center justify-center border-2 border-dashed border-slate-200 rounded-2xl bg-white p-6">
+                            <School className="w-12 h-12 text-slate-300 mb-3" />
+                            <h4 className="text-sm font-extrabold text-slate-700">No Class Mentors Created</h4>
+                            <p className="text-xs text-slate-400 mt-1 mb-4">Click "Add Class Mentor" above to create a folder for a class mentor.</p>
+                            <button
+                              onClick={() => setShowAddClassMentorModal(true)}
+                              className="px-4 py-2 bg-[#1A365D] text-white text-xs font-extrabold rounded-xl shadow-sm hover:bg-[#2A4365] transition-colors flex items-center gap-2"
+                            >
+                              <Plus className="w-4 h-4" />
+                              <span>Add Class Mentor</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 gap-3">
+                            {classMentors.map((cm, cmIdx) => {
+                              const classCount = students.filter(s => (s.class || '').toLowerCase() === (cm.classAssigned || '').toLowerCase()).length;
+                              return (
+                                <button 
+                                  key={cm.id}
+                                  onClick={() => setSelectedClassMentorIndex(cmIdx)}
+                                  className="group relative bg-white border border-slate-200 rounded-2xl p-4 shadow-sm flex items-center justify-between transition-all duration-200 hover:shadow-md hover:border-indigo-300 active:scale-[0.98] overflow-hidden text-left"
+                                >
+                                  <div className="flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-xl text-lg font-extrabold flex items-center justify-center transition-all duration-300 bg-indigo-50 text-indigo-700 group-hover:scale-110 group-hover:bg-indigo-100 shadow-inner">
+                                      {getInitials(cm.name)}
+                                    </div>
+                                    <div className="text-left flex flex-col justify-center">
+                                      <h4 className="text-[15px] font-extrabold text-slate-800 tracking-tight leading-tight">{cm.name}</h4>
+                                      <span className="text-xs text-indigo-600 font-extrabold mt-0.5 uppercase tracking-wide">Class {cm.classAssigned.toUpperCase()}</span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-3">
+                                    <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-md">
+                                      {classCount} Students
+                                    </span>
+                                    <ChevronRight className="w-5 h-5 text-indigo-500 group-hover:translate-x-0.5 transition-all duration-300" />
+                                  </div>
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 );
               }
@@ -6975,6 +7286,133 @@ ${selectedStudentSummaries.join('\n')}`;
                   className="w-full py-2.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:text-slate-800 text-xs font-bold transition-all"
                 >
                   Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Class Mentor Modal */}
+      {showAddClassMentorModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2 text-[#1A365D]">
+                <School className="w-5 h-5" />
+                <h2 className="text-sm font-extrabold tracking-wider">Add Class Mentor</h2>
+              </div>
+              <button 
+                onClick={() => setShowAddClassMentorModal(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 p-1.5 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleAddClassMentor} className="p-5 flex flex-col gap-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">
+                  1. Mentor Name
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={newClassMentor.name}
+                  onChange={(e) => setNewClassMentor({...newClassMentor, name: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#1A365D] focus:bg-white transition-colors"
+                  placeholder="e.g. dddd"
+                />
+              </div>
+
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">
+                  2. Select Class (Show All Classes)
+                </label>
+                <select
+                  required
+                  value={newClassMentor.classAssigned}
+                  onChange={(e) => setNewClassMentor({...newClassMentor, classAssigned: e.target.value})}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-[#1A365D] focus:bg-white transition-colors uppercase"
+                >
+                  <option value="">-- Select Class --</option>
+                  {CLASSES.map(c => (
+                    <option key={c} value={c}>Class {c.toUpperCase()}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={!newClassMentor.name.trim() || !newClassMentor.classAssigned.trim()}
+                  className="w-full py-3 bg-[#1A365D] hover:bg-[#2A4365] text-white rounded-xl font-extrabold text-xs shadow-md transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Create Class Mentor
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Delete Class Mentor Modal */}
+      {showDeleteClassMentorModal && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-fade-in">
+          <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl border border-slate-200 overflow-hidden" onClick={e => e.stopPropagation()}>
+            <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+              <div className="flex items-center gap-2 text-rose-600">
+                <Trash2 className="w-5 h-5" />
+                <h2 className="text-sm font-extrabold tracking-wider">Remove Class Mentor</h2>
+              </div>
+              <button 
+                onClick={() => setShowDeleteClassMentorModal(false)}
+                className="text-slate-400 hover:text-slate-600 hover:bg-slate-200 p-1.5 rounded-lg transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={handleDeleteClassMentor} className="p-5 flex flex-col gap-4">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide block mb-1">
+                  Select Class Mentor to Remove
+                </label>
+                <div className="flex flex-col gap-2 max-h-[200px] overflow-y-auto pr-1">
+                  {classMentors.length > 0 ? classMentors.map(cm => (
+                    <button
+                      key={cm.id}
+                      type="button"
+                      onClick={() => setSelectedClassMentorForDelete(cm.id)}
+                      className={`flex items-center justify-between p-3 border rounded-xl transition-all text-left ${
+                        selectedClassMentorForDelete === cm.id 
+                          ? 'border-rose-500 bg-rose-500/5 ring-1 ring-rose-500/20 shadow-sm' 
+                          : 'border-slate-200 hover:border-slate-300 bg-white hover:bg-slate-50'
+                      }`}
+                    >
+                      <div>
+                        <p className={`text-xs font-bold ${selectedClassMentorForDelete === cm.id ? 'text-rose-700' : 'text-slate-700'}`}>
+                          {cm.name}
+                        </p>
+                        <p className="text-[10px] font-bold text-indigo-600 uppercase">
+                          Class {cm.classAssigned.toUpperCase()}
+                        </p>
+                      </div>
+                      {selectedClassMentorForDelete === cm.id && (
+                        <CheckCircle2 className="w-4 h-4 text-rose-500" />
+                      )}
+                    </button>
+                  )) : (
+                    <p className="text-center text-slate-500 text-xs py-4">No Class Mentors to remove.</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="pt-2">
+                <button
+                  type="submit"
+                  disabled={!selectedClassMentorForDelete}
+                  className="w-full py-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-extrabold text-xs shadow-md transition-colors active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Remove Selected Class Mentor
                 </button>
               </div>
             </form>
