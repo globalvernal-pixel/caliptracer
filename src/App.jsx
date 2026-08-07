@@ -2395,7 +2395,7 @@ ${selectedStudentSummaries.join('\n')}`;
     );
 
     let lines = [];
-    const clsName = selectedClass ? selectedClass.toLowerCase() : '';
+    const clsName = (selectedClass || (selectedStudents[0] ? selectedStudents[0].class : '')).toLowerCase();
     if (clsName) {
       lines.push(clsName);
     }
@@ -2404,7 +2404,6 @@ ${selectedStudentSummaries.join('\n')}`;
       lines.push(`${student.name} ${sessionStar}star ${starEmoji}`);
     });
     if (sessionStarReason.trim()) {
-      lines.push('');
       let reason = sessionStarReason.trim();
       if (!reason.toLowerCase().startsWith('for ')) {
         reason = `for ${reason}`;
