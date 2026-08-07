@@ -4264,26 +4264,44 @@ ${selectedStudentSummaries.join('\n')}`;
                                   const formatStr = (ds) => {
                                     if(!ds) return '';
                                     const p = ds.split('-');
-                                    return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : ds;
+                                    if (p.length === 3) {
+                                      const day = parseInt(p[2], 10);
+                                      const month = parseInt(p[1], 10);
+                                      const year = p[0].slice(-2);
+                                      return `${day}/${month}/${year}`;
+                                    }
+                                    return ds;
                                   };
                                   const start = formatStr(diaryStartDate);
                                   const end = formatStr(diaryEndDate);
-                                  const periodStr = `${start} to ${end}`;
 
-                                  let rawText = `mentor name ${mentor.name}\nperiod ${periodStr}\n${mentor.classAssigned.toUpperCase()}\nstudents name\n\n`;
+                                  let rawText = `Date from ${start}   to   ${end}\nMentor: ${mentor.name}\n`;
 
+                                  // Group assigned students by class
+                                  const groupedByClass = {};
                                   assignedStudents.forEach(s => {
-                                    const record = diaryRecords[s.id] || { status: 'none', days: '' };
-                                    if (record.status === 'written') {
-                                      rawText += `${s.name} ✅\n`;
-                                    } else if (record.status === 'not_written') {
-                                      const daysStr = (record.days || '').replace(/[^0-9]/g, '');
-                                      const numDays = parseInt(daysStr) || 0;
-                                      const tallies = (numDays * (numDays + 1)) / 2;
-                                      rawText += `${s.name}  (not submitted ${record.days || numDays + ' day'})  ${tallies} tally\n`;
-                                    } else {
-                                      rawText += `${s.name} (not submitted)\n`;
+                                    const cls = (s.class || mentor.classAssigned || 'GENERAL').toUpperCase();
+                                    if (!groupedByClass[cls]) {
+                                      groupedByClass[cls] = [];
                                     }
+                                    groupedByClass[cls].push(s);
+                                  });
+
+                                  Object.keys(groupedByClass).forEach(cls => {
+                                    rawText += `\n${cls}\n`;
+                                    groupedByClass[cls].forEach(s => {
+                                      const record = diaryRecords[s.id] || { status: 'none', days: '' };
+                                      if (record.status === 'written') {
+                                        rawText += `${s.name}\n`;
+                                      } else if (record.status === 'not_written') {
+                                        const daysStr = (record.days || '').replace(/[^0-9]/g, '');
+                                        const numDays = parseInt(daysStr) || 0;
+                                        const tallies = (numDays * (numDays + 1)) / 2;
+                                        rawText += `${s.name} (not submitted ${record.days || numDays + ' day'}) ${tallies} tally\n`;
+                                      } else {
+                                        rawText += `${s.name} (not submitted)\n`;
+                                      }
+                                    });
                                   });
                                   
                                   const whatsappText = encodeURIComponent(rawText.trim());
