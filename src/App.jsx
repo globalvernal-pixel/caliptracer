@@ -3761,7 +3761,7 @@ ${selectedStudentSummaries.join('\n')}`;
                           <thead>
                             <tr className="bg-slate-100/80 border-b border-slate-200 text-[10px] font-extrabold text-slate-600 uppercase tracking-wider">
                               <th className="p-3 w-12 text-center">#</th>
-                              <th className="p-3">Student Name</th>
+                              <th className="p-3 min-w-[200px]">Student Name</th>
                               <th className="p-3">Class</th>
                               <th className="p-3">Room / Hostel</th>
                               <th className="p-3 text-center">Tally</th>
@@ -3774,7 +3774,7 @@ ${selectedStudentSummaries.join('\n')}`;
                               filteredClassStudents.map((st, idx) => (
                                 <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
                                   <td className="p-3 text-center text-slate-400 font-bold">{idx + 1}</td>
-                                  <td className="p-3 font-extrabold text-slate-800">{st.name}</td>
+                                  <td className="p-3 font-extrabold text-slate-800 min-w-[200px] whitespace-nowrap">{st.name}</td>
                                   <td className="p-3 uppercase font-bold text-indigo-600">{st.class}</td>
                                   <td className="p-3 text-slate-500 font-semibold">{st.roomNumber || 'N/A'} {st.hostelBlock ? `(${st.hostelBlock})` : ''}</td>
                                   <td className="p-3 text-center">
@@ -4720,7 +4720,7 @@ ${selectedStudentSummaries.join('\n')}`;
                               <thead className="bg-slate-50 text-slate-500 uppercase tracking-wider sticky top-0 border-b border-slate-200 z-10 shadow-sm">
                                 <tr>
                                   <th className="p-3 font-extrabold text-center">Class</th>
-                                  <th className="p-3 font-extrabold text-center">Name</th>
+                                  <th className="p-3 font-extrabold text-center min-w-[200px]">Name</th>
                                   <th className="p-3 font-extrabold text-center text-amber-700">Stars</th>
                                   <th className="p-3 font-extrabold text-center text-sky-700">Tallies</th>
                                   <th className="p-3 font-extrabold text-center text-[#1A365D]">Total</th>
@@ -6281,7 +6281,7 @@ ${selectedStudentSummaries.join('\n')}`;
                   <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-[10px]">
                     <th className="border-r border-slate-200 p-2 text-center"></th>
                     <th className="border-r border-slate-200 p-2 text-center font-mono text-[10px]">ROW</th>
-                    <th className="border-r border-slate-200 p-2.5 font-bold">STUDENT NAME</th>
+                    <th className="border-r border-slate-200 p-2.5 font-bold min-w-[220px] text-left">STUDENT NAME</th>
                     <th className="border-r border-slate-200 p-2.5 text-center font-bold text-amber-700">STARS</th>
                     <th className="border-r border-slate-200 p-2.5 text-center font-bold text-sky-700">TALLIES</th>
                     <th className="border-r border-slate-200 p-2.5 text-center font-bold text-[#1A365D]">TOTAL</th>
@@ -6327,13 +6327,13 @@ ${selectedStudentSummaries.join('\n')}`;
                           <td className="border-r border-slate-200 p-2 text-center text-slate-400 font-mono select-none text-[10px]">
                             {idx + 1}
                           </td>
-                          <td className="border-r border-slate-200 p-1 font-semibold text-slate-800">
+                          <td className="border-r border-slate-200 p-1 font-semibold text-slate-800 min-w-[220px]">
                             <input
                               type="text"
                               value={student.name}
                               readOnly={!isAdminAuthenticated}
                               onChange={(e) => updateStudentField(student.id, 'name', e.target.value)}
-                              className={`bg-transparent text-left w-full focus:outline-none py-1 px-2 rounded font-semibold text-xs text-slate-800 ${isAdminAuthenticated ? 'focus:bg-slate-100 cursor-pointer' : 'cursor-default'}`}
+                              className={`bg-transparent text-left w-full focus:outline-none py-1 px-2 rounded font-semibold text-xs text-slate-800 min-w-[200px] whitespace-nowrap overflow-visible ${isAdminAuthenticated ? 'focus:bg-slate-100 cursor-pointer' : 'cursor-default'}`}
                             />
                           </td>
                           <td className="border-r border-slate-200 p-1 text-center text-amber-700 font-bold">
