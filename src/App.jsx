@@ -2395,9 +2395,13 @@ ${selectedStudentSummaries.join('\n')}`;
     );
 
     let lines = [];
-    lines.push(`${sessionStar} star`);
+    const clsName = selectedClass ? selectedClass.toLowerCase() : '';
+    if (clsName) {
+      lines.push(clsName);
+    }
+    const starEmoji = '⭐'.repeat(sessionStar);
     selectedStudents.forEach(student => {
-      lines.push(student.name);
+      lines.push(`${student.name} ${sessionStar}star ${starEmoji}`);
     });
     if (sessionStarReason.trim()) {
       lines.push('');
