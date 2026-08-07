@@ -6254,10 +6254,10 @@ ${selectedStudentSummaries.join('\n')}`;
             {/* Spreadsheet Table */}
             <div className="flex-1 overflow-auto border border-slate-200 rounded-xl bg-white shadow-sm">
               <table className="w-full border-collapse text-left text-xs font-sans">
-                <thead>
+                <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs">
                   {/* Outer Class Header Row */}
                   <tr className="border-b border-slate-200 bg-slate-100 text-center font-bold">
-                    <th className="border-r border-slate-200 p-2 text-slate-400 font-mono text-[10px] w-8">
+                    <th className="border-r border-slate-200 p-2 text-slate-400 font-mono text-[10px] w-8 bg-slate-100 sticky top-0 z-20">
                       <input 
                         type="checkbox" 
                         className="cursor-pointer"
@@ -6271,29 +6271,29 @@ ${selectedStudentSummaries.join('\n')}`;
                         }}
                       />
                     </th>
-                    <th className="border-r border-slate-200 p-2 text-slate-400 font-mono text-[10px] w-8">#</th>
-                    <th colSpan="12" className="p-2 text-[#1A365D] font-extrabold uppercase tracking-widest text-xs bg-[#1A365D]/5">
+                    <th className="border-r border-slate-200 p-2 text-slate-400 font-mono text-[10px] w-8 bg-slate-100 sticky top-0 z-20">#</th>
+                    <th colSpan="13" className="p-2 text-[#1A365D] font-extrabold uppercase tracking-widest text-xs bg-[#1A365D]/10 sticky top-0 z-20">
                       Class {adminClass.toUpperCase()}
                     </th>
                   </tr>
                   
                   {/* Table headers */}
-                  <tr className="border-b border-slate-200 bg-slate-50 text-slate-500 uppercase text-[10px]">
-                    <th className="border-r border-slate-200 p-2 text-center"></th>
-                    <th className="border-r border-slate-200 p-2 text-center font-mono text-[10px]">ROW</th>
-                    <th className="border-r border-slate-200 p-2.5 font-bold min-w-[220px] text-left">STUDENT NAME</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-amber-700">STARS</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-sky-700">TALLIES</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-[#1A365D]">TOTAL</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-purple-700">GRADE</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-orange-600">N&O TALLY</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-[#1A365D]">TOTAL</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-orange-700">N&O GRADE</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-sky-600">DIARY TALLIES</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-cyan-600">SHEETS</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-rose-600">FINE</th>
-                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-[#1A365D]">TOTAL</th>
-                    <th className="p-2.5 text-center font-bold text-indigo-700">ATTITUDE GRADE</th>
+                  <tr className="border-b border-slate-200 bg-slate-100 text-slate-600 uppercase text-[10px] font-extrabold">
+                    <th className="border-r border-slate-200 p-2 text-center bg-slate-100 sticky top-[33px] z-20"></th>
+                    <th className="border-r border-slate-200 p-2 text-center font-mono text-[10px] bg-slate-100 sticky top-[33px] z-20">ROW</th>
+                    <th className="border-r border-slate-200 p-2.5 font-bold min-w-[260px] w-[260px] text-left bg-slate-100 sticky top-[33px] z-20">STUDENT NAME</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-amber-700 bg-slate-100 sticky top-[33px] z-20 min-w-[75px]">STARS</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-sky-700 bg-slate-100 sticky top-[33px] z-20 min-w-[75px]">TALLIES</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-[#1A365D] bg-slate-100 sticky top-[33px] z-20 min-w-[75px]">TOTAL</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-purple-700 bg-slate-100 sticky top-[33px] z-20 min-w-[75px]">GRADE</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-orange-600 bg-slate-100 sticky top-[33px] z-20 min-w-[95px]">N&O TALLY</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-[#1A365D] bg-slate-100 sticky top-[33px] z-20 min-w-[75px]">TOTAL</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-orange-700 bg-slate-100 sticky top-[33px] z-20 min-w-[95px]">N&O GRADE</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-sky-600 bg-slate-100 sticky top-[33px] z-20 min-w-[105px]">DIARY TALLIES</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-cyan-600 bg-slate-100 sticky top-[33px] z-20 min-w-[75px]">SHEETS</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-rose-600 bg-slate-100 sticky top-[33px] z-20 min-w-[75px]">FINE</th>
+                    <th className="border-r border-slate-200 p-2.5 text-center font-bold text-[#1A365D] bg-slate-100 sticky top-[33px] z-20 min-w-[75px]">TOTAL</th>
+                    <th className="p-2.5 text-center font-bold text-indigo-700 bg-slate-100 sticky top-[33px] z-20 min-w-[120px]">ATTITUDE GRADE</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -6327,13 +6327,13 @@ ${selectedStudentSummaries.join('\n')}`;
                           <td className="border-r border-slate-200 p-2 text-center text-slate-400 font-mono select-none text-[10px]">
                             {idx + 1}
                           </td>
-                          <td className="border-r border-slate-200 p-1 font-semibold text-slate-800 min-w-[220px]">
+                          <td className="border-r border-slate-200 p-1 font-semibold text-slate-800 min-w-[260px] w-[260px]">
                             <input
                               type="text"
                               value={student.name}
                               readOnly={!isAdminAuthenticated}
                               onChange={(e) => updateStudentField(student.id, 'name', e.target.value)}
-                              className={`bg-transparent text-left w-full focus:outline-none py-1 px-2 rounded font-semibold text-xs text-slate-800 min-w-[200px] whitespace-nowrap overflow-visible ${isAdminAuthenticated ? 'focus:bg-slate-100 cursor-pointer' : 'cursor-default'}`}
+                              className={`bg-transparent text-left w-full focus:outline-none py-1 px-2 rounded font-semibold text-xs text-slate-800 min-w-[240px] whitespace-nowrap overflow-visible ${isAdminAuthenticated ? 'focus:bg-slate-100 cursor-pointer' : 'cursor-default'}`}
                             />
                           </td>
                           <td className="border-r border-slate-200 p-1 text-center text-amber-700 font-bold">
