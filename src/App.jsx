@@ -170,7 +170,7 @@ const ROOM_STUDENT_MAPPING = {
   '109': [
     { id: 'r109-1', name: 'SAHIL MOHAMMED SAHEER', class: 'S1B' },
     { id: 'r109-2', name: 'HADI MUHAMMAD', class: 'S1B' },
-    { id: 'r109-3', name: 'AMAN ABDULLA KT', class: 'C1B' },
+    { id: 'r109-3', name: 'AMAN ABDULLA KT', class: 'C1C' },
     { id: 'r109-4', name: 'MUHAMMED FADHIL', class: 'C1B' },
     { id: 'r109-5', name: 'MOHAMMED', class: 'C1C' },
     { id: 'r109-6', name: 'RAFAN MUHAMMED', class: 'C1C' }
