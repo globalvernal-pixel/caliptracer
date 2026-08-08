@@ -2798,7 +2798,7 @@ ${selectedStudentSummaries.join('\n')}`;
              const type = log.event_type.toLowerCase();
              if (type === 'star') dynStar += Math.abs(log.amount);
              else if (type === 'tally') dynTally += Math.abs(log.amount);
-             else if (type === 'spot fine') dynFine += 1;
+             else if (type === 'spot fine' || type === 'room fine' || type === 'spotfine' || type === 'roomfine' || type === 'fine') dynFine += 1;
              else if (type === 'n&o tally' || type === 'n&o') dynNo += Math.abs(log.amount);
              else if (type === 'diary tally') dynDiary += Math.abs(log.amount);
              else if (type.includes('sheet') || type === 'apology') dynSheet += Number(log.amount);
@@ -8190,7 +8190,7 @@ ${selectedStudentSummaries.join('\n')}`;
                           else if (type === 'fine' || type === 'fin') eventDisplay = `fin`;
                           else if (type.includes('sheet') || type === 'yellow sheet') eventDisplay = `yello sheet`;
                           else if (type.includes('n&o') || type === 'neat') eventDisplay = `N&O tally`;
-                          else if (type === 'spot fine' || type === 'spotfine') eventDisplay = `spot fine`;
+                          else if (type === 'spot fine' || type === 'spotfine' || type === 'room fine' || type === 'roomfine') eventDisplay = type.includes('room') ? `room fine` : `spot fine`;
                           else if (type === 'diary') eventDisplay = `${amt} diary`;
                           else eventDisplay = log.amount ? `${amt} ${log.event_type}` : log.event_type;
 
@@ -8351,7 +8351,7 @@ ${selectedStudentSummaries.join('\n')}`;
                                 else if (type === 'fine' || type === 'fin') eventDisplay = `fin`;
                                 else if (type.includes('sheet') || type === 'yellow sheet') eventDisplay = `yello sheet`;
                                 else if (type.includes('n&o') || type === 'neat') eventDisplay = `N&O tally`;
-                                else if (type === 'spot fine' || type === 'spotfine') eventDisplay = `spot fine`;
+                                else if (type === 'spot fine' || type === 'spotfine' || type === 'room fine' || type === 'roomfine') eventDisplay = type.includes('room') ? `room fine` : `spot fine`;
                                 else if (type === 'diary') eventDisplay = `${amt} diary`;
                                 else eventDisplay = log.amount ? `${amt} ${log.event_type}` : log.event_type;
                                 
@@ -8691,10 +8691,13 @@ ${selectedStudentSummaries.join('\n')}`;
                     if (isMatchingSelected) {
                       const updated = {
                         ...s,
+                        fine: (s.fine || 0) + fineAmt,
+                        fineCount: (s.fineCount || 0) + 1,
+                        fineReason: reason || s.fineReason,
                         spotFine: (s.spotFine || 0) + fineAmt,
                         spotFineReason: reason || s.spotFineReason
                       };
-                      logHistory(s.id, 'Spot Fine', fineAmt, reason);
+                      logHistory(s.id, 'Room Fine', fineAmt, reason);
                       studentsToUpsert.push(updated);
                       return updated;
                     }
@@ -9331,8 +9334,9 @@ ${selectedStudentSummaries.join('\n')}`;
                       eventDisplay = `${log.amount || 1} STAR`;
                     } else if (type === 'tally') {
                       eventDisplay = `${log.amount || 1} TALLY`;
-                    } else if (type === 'spot fine' || type === 'spot_fine' || type === 'fine') {
-                      eventDisplay = `SPOT FINE ${log.amount ? '(₹' + log.amount + ')' : ''}`;
+                    } else if (type === 'spot fine' || type === 'spot_fine' || type === 'room fine' || type === 'room_fine' || type === 'fine') {
+                      const fineLabel = type.includes('room') ? 'ROOM FINE' : 'SPOT FINE';
+                      eventDisplay = `${fineLabel} ${log.amount ? '(₹' + log.amount + ')' : ''}`;
                     } else if (type === 'spot') {
                       eventDisplay = `SPOT`;
                     } else if (type === 'sata') {
