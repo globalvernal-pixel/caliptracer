@@ -2115,9 +2115,13 @@ ${selectedStudentSummaries.join('\n')}`;
     }
 
     // 2. Class Filter
-    const studentObj = students.find(s => String(s.id) === String(log.student_id));
+    const studentObj = students.find(s => 
+      String(s.id) === String(log.student_id) || 
+      (log.student_name && s.name.trim().toLowerCase() === String(log.student_name).trim().toLowerCase())
+    );
     if (activityClassFilter !== 'ALL') {
-      if (!studentObj || studentObj.class.toLowerCase() !== activityClassFilter.toLowerCase()) {
+      const cls = studentObj ? studentObj.class : (log.student_class || log.class || '');
+      if (!cls || cls.trim().toLowerCase() !== activityClassFilter.toLowerCase()) {
         return false;
       }
     }
@@ -2348,7 +2352,13 @@ ${selectedStudentSummaries.join('\n')}`;
     return 0;
   };
 
-  const getFineCount = (s) => (s.fineCount !== undefined && s.fineCount > 0) ? s.fineCount : (s.fine > 0 ? s.fine : (s.spotFine > 0 ? 1 : 0));
+  const getFineCount = (s) => {
+    if (!s) return 0;
+    if (s.fineCount !== undefined && Number(s.fineCount) > 0) return Number(s.fineCount);
+    if (s.history_fine_count !== undefined && Number(s.history_fine_count) > 0) return Number(s.history_fine_count);
+    if (Number(s.fine) > 0 || Number(s.spotFine) > 0) return 1;
+    return 0;
+  };
 
   // General field updater to support text descriptions
   const updateStudentField = (studentId, field, value) => {
