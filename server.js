@@ -36,6 +36,7 @@ const pool = new Pool({
 const INITIAL_STUDENTS = [];
 
 // Helper to map DB row to frontend student structure
+function mapRowToStudent(row) {
   const histFineCount = Number(row.history_fine_count) || 0;
   const rawFineCount = Number(row.fine_count) || 0;
   const rawFine = Number(row.fine) || 0;
