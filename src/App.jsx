@@ -2348,7 +2348,7 @@ ${selectedStudentSummaries.join('\n')}`;
     return 0;
   };
 
-  const getFineCount = (s) => (s.fineCount !== undefined && s.fineCount > 0) ? s.fineCount : (s.fine > 0 ? 1 : 0);
+  const getFineCount = (s) => (s.fineCount !== undefined && s.fineCount > 0) ? s.fineCount : (s.fine > 0 ? s.fine : (s.spotFine > 0 ? 1 : 0));
 
   // General field updater to support text descriptions
   const updateStudentField = (studentId, field, value) => {
@@ -6529,10 +6529,11 @@ ${selectedStudentSummaries.join('\n')}`;
                             <input
                               type="number"
                               min="0"
-                              value={student.fine || 0}
+                              value={getFineCount(student)}
                               onChange={(e) => {
                                 const val = Math.max(0, parseInt(e.target.value) || 0);
                                 updateStudentField(student.id, 'fine', val);
+                                updateStudentField(student.id, 'fineCount', val);
                               }}
                               className="bg-transparent text-center w-full focus:outline-none focus:bg-rose-50 py-1 px-1 rounded font-bold text-rose-600"
                             />

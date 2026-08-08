@@ -36,7 +36,12 @@ const pool = new Pool({
 const INITIAL_STUDENTS = [];
 
 // Helper to map DB row to frontend student structure
-function mapRowToStudent(row) {
+  const histFineCount = Number(row.history_fine_count) || 0;
+  const rawFineCount = Number(row.fine_count) || 0;
+  const rawFine = Number(row.fine) || 0;
+  const finalFineCount = Math.max(rawFineCount, histFineCount, rawFine > 0 ? 1 : 0);
+  const finalFine = Math.max(rawFine, histFineCount);
+
   return {
     id: row.id,
     name: row.name,
@@ -50,8 +55,8 @@ function mapRowToStudent(row) {
     neatAndOrderTally: row.neat_and_order_tally || 0,
     neatAndOrderReason: row.neat_and_order_reason || '',
     neatAndOrderIncidents: row.neat_and_order_incidents || 0,
-    fine: row.fine || 0,
-    fineCount: row.fine_count || 0,
+    fine: finalFine,
+    fineCount: finalFineCount,
     fineReason: row.fine_reason || '',
     ineligible: row.ineligible || false,
     ineligibleReason: row.ineligible_reason || '',
@@ -210,7 +215,12 @@ async function initDb() {
 app.get('/api/students', async (req, res) => {
   try {
     const result = await pool.query(`
-      SELECT s.*, mbs.date AS summary_date 
+      SELECT s.*, mbs.date AS summary_date,
+        COALESCE((
+          SELECT COUNT(*) FROM student_history h 
+          WHERE h.student_id = s.id 
+          AND LOWER(h.event_type) IN ('spot fine', 'room fine', 'spot_fine', 'room_fine', 'fine', 'spot', 'room')
+        ), 0) AS history_fine_count
       FROM students s 
       LEFT JOIN morning_bliss_summary mbs ON s.summary_id = mbs.id
     `);
