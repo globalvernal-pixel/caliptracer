@@ -934,8 +934,10 @@ export default function App() {
   const [morningBlissMark, setMorningBlissMark] = useState('');
   const [morningBlissEv, setMorningBlissEv] = useState('');
   const [showMorningBlissDropdown, setShowMorningBlissDropdown] = useState(false);
-  const [morningBlissDuration, setMorningBlissDuration] = useState(0); // seconds
+  const [morningBlissDuration, setMorningBlissDuration] = useState(0); // milliseconds
   const [isStopwatchRunning, setIsStopwatchRunning] = useState(false);
+  const stopwatchStartTimeRef = useRef(null);
+  const stopwatchAccumulatedRef = useRef(0);
   const [mbFromDate, setMbFromDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [mbToDate, setMbToDate] = useState(() => new Date().toISOString().split('T')[0]);
   const handleDownloadScreenshotCard = async (elementId, fileName = 'Report_Card.png') => {
@@ -968,18 +970,35 @@ export default function App() {
     let interval;
     if (isStopwatchRunning) {
       interval = setInterval(() => {
-        setMorningBlissDuration(prev => prev + 1);
-      }, 1000);
-    } else if (!isStopwatchRunning && morningBlissDuration !== 0) {
-      clearInterval(interval);
+        if (stopwatchStartTimeRef.current) {
+          setMorningBlissDuration(Date.now() - stopwatchStartTimeRef.current);
+        }
+      }, 30);
     }
-    return () => clearInterval(interval);
-  }, [isStopwatchRunning, morningBlissDuration]);
 
-  const formatMBTime = (totalSeconds) => {
+    const handleSync = () => {
+      if (isStopwatchRunning && stopwatchStartTimeRef.current) {
+        setMorningBlissDuration(Date.now() - stopwatchStartTimeRef.current);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleSync);
+    window.addEventListener('focus', handleSync);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleSync);
+      window.removeEventListener('focus', handleSync);
+    };
+  }, [isStopwatchRunning]);
+
+  const formatMBTime = (totalMs) => {
+    if (!totalMs || isNaN(totalMs)) return '00:00:00';
+    const totalSeconds = Math.floor(totalMs / 1000);
     const m = Math.floor(totalSeconds / 60).toString().padStart(2, '0');
     const s = (totalSeconds % 60).toString().padStart(2, '0');
-    return `${m}:${s}`;
+    const ms = Math.floor((totalMs % 1000) / 10).toString().padStart(2, '0');
+    return `${m}:${s}:${ms}`;
   };
 
   const handleMorningBlissExportExcelRange = () => {
@@ -1109,8 +1128,10 @@ EV: ${morningBlissEv}`;
     
     setMorningBlissNameSearch('');
     setMorningBlissMark('');
-    setMorningBlissDuration(0);
     setIsStopwatchRunning(false);
+    stopwatchAccumulatedRef.current = 0;
+    stopwatchStartTimeRef.current = null;
+    setMorningBlissDuration(0);
   };
 
   const handleMorningBlissDone = async () => {
@@ -5038,14 +5059,27 @@ ${selectedStudentSummaries.join('\n')}`;
                         <div className="flex gap-2 justify-center">
                           <button
                             type="button"
-                            onClick={() => setIsStopwatchRunning(!isStopwatchRunning)}
+                            onClick={() => {
+                              if (isStopwatchRunning) {
+                                setIsStopwatchRunning(false);
+                                stopwatchAccumulatedRef.current = morningBlissDuration;
+                              } else {
+                                stopwatchStartTimeRef.current = Date.now() - stopwatchAccumulatedRef.current;
+                                setIsStopwatchRunning(true);
+                              }
+                            }}
                             className={`px-4 py-2 rounded-lg font-bold text-white transition-colors ${isStopwatchRunning ? 'bg-red-500 hover:bg-red-600' : 'bg-emerald-500 hover:bg-emerald-600'}`}
                           >
                             {isStopwatchRunning ? 'Stop' : 'Start'}
                           </button>
                           <button
                             type="button"
-                            onClick={() => { setIsStopwatchRunning(false); setMorningBlissDuration(0); }}
+                            onClick={() => {
+                              setIsStopwatchRunning(false);
+                              stopwatchAccumulatedRef.current = 0;
+                              stopwatchStartTimeRef.current = null;
+                              setMorningBlissDuration(0);
+                            }}
                             className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-bold transition-colors"
                           >
                             Reset
