@@ -21,9 +21,29 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 app.use(compression());
-app.use(cors());
+app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'dist')));
+
+let dbInitPromise = null;
+let isDbInitialized = false;
+
+async function ensureDb(req, res, next) {
+  if (!isDbInitialized) {
+    if (!dbInitPromise) {
+      dbInitPromise = initDb().then(() => {
+        isDbInitialized = true;
+      }).catch(err => {
+        console.error('Database initialization error in middleware:', err);
+        dbInitPromise = null;
+      });
+    }
+    await dbInitPromise;
+  }
+  next();
+}
+
+app.use(ensureDb);
 
 const pool = new Pool({
   connectionString: 'postgresql://postgres.xnkzwagnibshwcjenvxh:frrVFypkPqsnx7tl@aws-1-ap-southeast-2.pooler.supabase.com:6543/postgres',
