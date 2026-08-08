@@ -8485,9 +8485,7 @@ ${selectedStudentSummaries.join('\n')}`;
               <button
                 onClick={() => {
                   const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
-                  const allocated = ROOM_STUDENT_MAPPING[currentRoomKey] !== undefined ? 
-                    ROOM_STUDENT_MAPPING[currentRoomKey] : 
-                    students.filter(s => String(s.room || s.roomNumber || '').trim() === currentRoomKey);
+                  const allocated = getHostelRoomStudents(selectedHostel, currentRoomKey);
                   const selectedObjs = allocated.filter(s => performanceSelectedStudents.includes(s.id));
                   
                   const amount = Number(roomTallyCount) || 1;
@@ -8495,7 +8493,7 @@ ${selectedStudentSummaries.join('\n')}`;
 
                   let studentsToUpsert = [];
                   const updatedStudents = students.map(s => {
-                    const isMatchingSelected = selectedObjs.some(so => 
+                    const isMatchingSelected = performanceSelectedStudents.includes(s.id) || selectedObjs.some(so => 
                       so.id === s.id || (so.name.toLowerCase() === s.name.toLowerCase() && so.class.toLowerCase() === (s.class || '').toLowerCase())
                     );
                     if (isMatchingSelected) {
@@ -8676,9 +8674,7 @@ ${selectedStudentSummaries.join('\n')}`;
               <button
                 onClick={() => {
                   const currentRoomKey = selectedRoom ? String(selectedRoom).replace(/room\s*/i, '').trim() : '';
-                  const allocated = ROOM_STUDENT_MAPPING[currentRoomKey] !== undefined ? 
-                    ROOM_STUDENT_MAPPING[currentRoomKey] : 
-                    students.filter(s => String(s.room || s.roomNumber || '').trim() === currentRoomKey);
+                  const allocated = getHostelRoomStudents(selectedHostel, currentRoomKey);
                   const selectedObjs = allocated.filter(s => performanceSelectedStudents.includes(s.id));
                   
                   const fineAmt = Number(roomFineAmount) || 0;
@@ -8686,7 +8682,7 @@ ${selectedStudentSummaries.join('\n')}`;
 
                   let studentsToUpsert = [];
                   const updatedStudents = students.map(s => {
-                    const isMatchingSelected = selectedObjs.some(so => 
+                    const isMatchingSelected = performanceSelectedStudents.includes(s.id) || selectedObjs.some(so => 
                       so.id === s.id || (so.name.toLowerCase() === s.name.toLowerCase() && so.class.toLowerCase() === (s.class || '').toLowerCase())
                     );
                     if (isMatchingSelected) {
