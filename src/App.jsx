@@ -4295,7 +4295,7 @@ ${selectedStudentSummaries.join('\n')}`;
                                     groupedByClass[cls].forEach(s => {
                                       const record = diaryRecords[s.id] || { status: 'none', days: '' };
                                       if (record.status === 'written') {
-                                        rawText += `${s.name}\n`;
+                                        rawText += `${s.name}✅\n`;
                                       } else if (record.status === 'not_written') {
                                         const daysStr = (record.days || '').replace(/[^0-9]/g, '');
                                         const numDays = parseInt(daysStr) || 0;
