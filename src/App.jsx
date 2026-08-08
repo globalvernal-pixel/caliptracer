@@ -8492,11 +8492,16 @@ ${selectedStudentSummaries.join('\n')}`;
                   const reason = roomTallyReason || 'Room Tally';
 
                   let studentsToUpsert = [];
-                  const updatedStudents = students.map(s => {
-                    const isMatchingSelected = performanceSelectedStudents.includes(s.id) || selectedObjs.some(so => 
-                      so.id === s.id || (so.name.toLowerCase() === s.name.toLowerCase() && so.class.toLowerCase() === (s.class || '').toLowerCase())
+                  let updatedStudentsList = [...students];
+
+                  selectedObjs.forEach(so => {
+                    const matchIndex = updatedStudentsList.findIndex(s => 
+                      s.id === so.id || 
+                      (s.name.trim().toLowerCase() === so.name.trim().toLowerCase() && (s.class || '').trim().toLowerCase() === (so.class || '').trim().toLowerCase())
                     );
-                    if (isMatchingSelected) {
+
+                    if (matchIndex !== -1) {
+                      const s = updatedStudentsList[matchIndex];
                       const updated = {
                         ...s,
                         tally: (s.tally || 0) + amount,
@@ -8506,13 +8511,37 @@ ${selectedStudentSummaries.join('\n')}`;
                       };
                       logHistory(s.id, 'N&O Tally', amount, reason);
                       studentsToUpsert.push(updated);
-                      return updated;
+                      updatedStudentsList[matchIndex] = updated;
+                    } else {
+                      const newId = so.id && !so.id.startsWith('r') ? so.id : `st-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+                      const newStudent = {
+                        id: newId,
+                        name: so.name,
+                        class: (so.class || 'S1B').toUpperCase(),
+                        star: 0,
+                        tally: amount,
+                        starReason: '',
+                        tallyReason: '',
+                        diaryStar: 0,
+                        diaryTally: 0,
+                        neatAndOrderTally: amount,
+                        neatAndOrderReason: reason,
+                        neatAndOrderIncidents: 1,
+                        fine: 0,
+                        fineCount: 0,
+                        fineReason: '',
+                        room: currentRoomKey,
+                        roomNumber: currentRoomKey,
+                        hostelBlock: selectedHostel
+                      };
+                      logHistory(newId, 'N&O Tally', amount, reason);
+                      studentsToUpsert.push(newStudent);
+                      updatedStudentsList.push(newStudent);
                     }
-                    return s;
                   });
 
                   if (studentsToUpsert.length > 0) {
-                    setStudents(updatedStudents);
+                    setStudents(updatedStudentsList);
                     fetch('/api/students/bulk-upsert', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
@@ -8681,11 +8710,16 @@ ${selectedStudentSummaries.join('\n')}`;
                   const reason = roomFineReason || 'Room Fine Violation';
 
                   let studentsToUpsert = [];
-                  const updatedStudents = students.map(s => {
-                    const isMatchingSelected = performanceSelectedStudents.includes(s.id) || selectedObjs.some(so => 
-                      so.id === s.id || (so.name.toLowerCase() === s.name.toLowerCase() && so.class.toLowerCase() === (s.class || '').toLowerCase())
+                  let updatedStudentsList = [...students];
+
+                  selectedObjs.forEach(so => {
+                    const matchIndex = updatedStudentsList.findIndex(s => 
+                      s.id === so.id || 
+                      (s.name.trim().toLowerCase() === so.name.trim().toLowerCase() && (s.class || '').trim().toLowerCase() === (so.class || '').trim().toLowerCase())
                     );
-                    if (isMatchingSelected) {
+
+                    if (matchIndex !== -1) {
+                      const s = updatedStudentsList[matchIndex];
                       const updated = {
                         ...s,
                         fine: (s.fine || 0) + fineAmt,
@@ -8696,13 +8730,39 @@ ${selectedStudentSummaries.join('\n')}`;
                       };
                       logHistory(s.id, 'Room Fine', fineAmt, reason);
                       studentsToUpsert.push(updated);
-                      return updated;
+                      updatedStudentsList[matchIndex] = updated;
+                    } else {
+                      const newId = so.id && !so.id.startsWith('r') ? so.id : `st-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+                      const newStudent = {
+                        id: newId,
+                        name: so.name,
+                        class: (so.class || 'S1B').toUpperCase(),
+                        star: 0,
+                        tally: 0,
+                        starReason: '',
+                        tallyReason: '',
+                        diaryStar: 0,
+                        diaryTally: 0,
+                        neatAndOrderTally: 0,
+                        neatAndOrderReason: '',
+                        neatAndOrderIncidents: 0,
+                        fine: fineAmt,
+                        fineCount: 1,
+                        fineReason: reason,
+                        spotFine: fineAmt,
+                        spotFineReason: reason,
+                        room: currentRoomKey,
+                        roomNumber: currentRoomKey,
+                        hostelBlock: selectedHostel
+                      };
+                      logHistory(newId, 'Room Fine', fineAmt, reason);
+                      studentsToUpsert.push(newStudent);
+                      updatedStudentsList.push(newStudent);
                     }
-                    return s;
                   });
 
                   if (studentsToUpsert.length > 0) {
-                    setStudents(updatedStudents);
+                    setStudents(updatedStudentsList);
                     fetch('/api/students/bulk-upsert', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
