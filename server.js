@@ -114,18 +114,21 @@ async function initDb() {
       );
     `);
 
-    // Seed or upgrade default admin user to super_admin
+    // Seed or upgrade default admin user to super_admin and ensure password is 1234
+    const hash = await bcrypt.hash('1234', 12);
     const adminCheck = await pool.query("SELECT id, role FROM app_users WHERE username = 'admin'");
     if (adminCheck.rows.length === 0) {
-      const hash = await bcrypt.hash('1234', 12);
       await pool.query(
         "INSERT INTO app_users (username, password_hash, role, permissions) VALUES ($1, $2, $3, $4)",
         ['admin', hash, 'super_admin', JSON.stringify(['all'])]
       );
       console.log('Default super admin user created: admin / 1234');
-    } else if (adminCheck.rows[0].role !== 'super_admin') {
-      await pool.query("UPDATE app_users SET role = 'super_admin' WHERE username = 'admin'");
-      console.log('Upgraded default admin user to super_admin');
+    } else {
+      await pool.query(
+        "UPDATE app_users SET password_hash = $1, role = 'super_admin', permissions = $2 WHERE username = 'admin'",
+        [hash, JSON.stringify(['all'])]
+      );
+      console.log('Admin user password reset to 1234 with super_admin role');
     }
 
     // Create Morning Bliss Summary Table
