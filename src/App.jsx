@@ -5544,8 +5544,19 @@ ${selectedStudentSummaries.join('\n')}`;
                             </div>
                         )}
 
-                        <div className="relative">
-                            <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Student Name(s) (Multi-Select)</label>
+                        <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">Student Name(s) (Multi-Select)</label>
+                              {spotClass && (
+                                <button
+                                  type="button"
+                                  onClick={() => setShowSpotDropdown(!showSpotDropdown)}
+                                  className="text-xs font-extrabold text-[#1A365D] hover:underline flex items-center gap-1 cursor-pointer"
+                                >
+                                  {showSpotDropdown ? 'Hide List ✕' : 'Show List ▾'}
+                                </button>
+                              )}
+                            </div>
                             <div className="relative">
                                 <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                                 <input 
@@ -5569,20 +5580,29 @@ ${selectedStudentSummaries.join('\n')}`;
                                   });
 
                                   return (
-                                    <div className="mt-2 bg-white border border-slate-200 rounded-xl shadow-lg max-h-60 overflow-y-auto divide-y divide-slate-100 z-50 absolute left-0 right-0">
-                                        {/* Select All Matching header */}
-                                        {filtered.length > 1 && (
-                                          <div 
-                                            className="p-3 bg-slate-50 hover:bg-slate-100 cursor-pointer font-extrabold text-xs text-[#1A365D] flex items-center justify-between transition-colors sticky top-0 border-b border-slate-200 z-10"
-                                            onClick={() => {
-                                              const matchingIds = filtered.map(s => s.id);
-                                              setSpotSelectedStudentIds(prev => Array.from(new Set([...prev, ...matchingIds])));
-                                            }}
+                                    <div className="mt-2 bg-white border border-slate-200 rounded-xl shadow-sm max-h-60 overflow-y-auto divide-y divide-slate-100 relative w-full">
+                                        {/* Action Bar */}
+                                        <div className="p-2.5 bg-slate-50 border-b border-slate-200 sticky top-0 z-10 flex items-center justify-between gap-2">
+                                          {filtered.length > 1 ? (
+                                            <button 
+                                              type="button"
+                                              className="text-xs font-black text-emerald-800 bg-emerald-100 hover:bg-emerald-200 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
+                                              onClick={() => {
+                                                const matchingIds = filtered.map(s => s.id);
+                                                setSpotSelectedStudentIds(prev => Array.from(new Set([...prev, ...matchingIds])));
+                                              }}
+                                            >
+                                              Select All ({filtered.length})
+                                            </button>
+                                          ) : <div />}
+                                          <button
+                                            type="button"
+                                            onClick={() => setShowSpotDropdown(false)}
+                                            className="text-xs font-black bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                                           >
-                                            <span>Select All {filtered.length} Matching Students</span>
-                                            <span className="text-[10px] text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded font-black">Select All</span>
-                                          </div>
-                                        )}
+                                            Done / Hide List ✕
+                                          </button>
+                                        </div>
 
                                         {filtered.map(s => {
                                             const isSelected = spotSelectedStudentIds.includes(s.id);
