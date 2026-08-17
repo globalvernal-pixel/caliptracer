@@ -276,6 +276,16 @@ async function initDb() {
     }
 
 
+    // Enable Row Level Security (RLS) on all public tables for Supabase security compliance
+    await pool.query(`
+      ALTER TABLE IF EXISTS app_users ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE IF EXISTS morning_bliss_summary ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE IF EXISTS app_config ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE IF EXISTS phone_passes ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE IF EXISTS students ENABLE ROW LEVEL SECURITY;
+      ALTER TABLE IF EXISTS student_history ENABLE ROW LEVEL SECURITY;
+    `);
+
   } catch (err) {
     console.error('Database initialization error:', err);
   }
