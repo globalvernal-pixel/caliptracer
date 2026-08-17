@@ -11505,16 +11505,18 @@ ${selectedStudentSummaries.join('\n')}`;
         {/* ISSUE PHONE PASS MODAL */}
         {showIssuePhonePassModal && (
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-[210] animate-fade-in font-sans">
-            <div className="bg-white rounded-3xl w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-4" onClick={e => e.stopPropagation()}>
+            <div className="bg-white rounded-3xl w-full max-w-lg max-h-[90vh] shadow-2xl border border-slate-100 overflow-hidden flex flex-col p-6 gap-4" onClick={e => e.stopPropagation()}>
 
               {/* Modal Header */}
-              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3 shrink-0">
                 <div className="flex items-center gap-2 text-emerald-700">
                   <Smartphone className="w-6 h-6" />
                   <h3 className="font-black text-lg uppercase">Issue School Phone Pass</h3>
                 </div>
                 <button onClick={() => setShowIssuePhonePassModal(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">✕</button>
               </div>
+
+              <div className="overflow-y-auto pr-1 flex flex-col gap-4">
 
               {phonePassStep === 1 ? (
                 /* STEP 1: SELECT STUDENT */
@@ -11799,6 +11801,7 @@ ${selectedStudentSummaries.join('\n')}`;
                 </form>
               )}
 
+              </div>
             </div>
           </div>
         )}
@@ -11806,7 +11809,7 @@ ${selectedStudentSummaries.join('\n')}`;
         {/* --- MONTHLY LEAVE BULK PHONE PASS MODAL --- */}
         {showMonthlyLeaveModal && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs animate-fade-in">
-            <div className="bg-white w-full max-w-lg rounded-3xl p-5 shadow-2xl border border-slate-100 flex flex-col gap-4 animate-scale-up">
+            <div className="bg-white w-full max-w-lg max-h-[90vh] rounded-3xl p-5 shadow-2xl border border-slate-100 flex flex-col gap-4 animate-scale-up overflow-y-auto" onClick={e => e.stopPropagation()}>
               {/* Modal Header */}
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2 text-indigo-700">
