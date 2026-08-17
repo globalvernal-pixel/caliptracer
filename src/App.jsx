@@ -2000,6 +2000,7 @@ ${selectedStudentSummaries.join('\n')}`;
     const firstSelectedStudent = students.find(s => performanceSelectedStudents.includes(s.id));
     const targetClassHeader = (performanceSelectedClass || firstSelectedStudent?.class || 'C2A').toUpperCase();
     let messageLines = [targetClassHeader, ''];
+    let studentsToUpsert = [];
 
     const updatedStudents = students.map(s => {
       if (performanceSelectedStudents.includes(s.id)) {
@@ -2012,6 +2013,7 @@ ${selectedStudentSummaries.join('\n')}`;
           tallyReason: isNeat ? s.tallyReason : (reason || s.tallyReason),
           neatAndOrderReason: isNeat ? (reason || s.neatAndOrderReason) : s.neatAndOrderReason
         };
+        studentsToUpsert.push(updated);
         logHistory(s.id, isNeat ? 'N&O' : 'tally', isNeat ? 1 : amount, reason);
         const starsStr = isNeat ? '⭐' : '⭐'.repeat(Math.max(1, Math.min(amount, 20)));
         messageLines.push(`${s.name} ${amount}${isNeat ? 'tally' : (performanceSubmitData.type || 'star')} ${starsStr}`);
@@ -2022,11 +2024,13 @@ ${selectedStudentSummaries.join('\n')}`;
 
     setStudents(updatedStudents);
 
-    fetch('/api/students/bulk-upsert', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ students: studentsToUpsert })
-    }).catch(err => console.error("Error bulk upserting:", err));
+    if (studentsToUpsert.length > 0) {
+      fetch('/api/students/bulk-upsert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ students: studentsToUpsert })
+      }).catch(err => console.error("Error bulk upserting:", err));
+    }
 
     setWhatsappMessage(messageLines.join('\n'));
     setShowPerformanceSubmitModal(false);
