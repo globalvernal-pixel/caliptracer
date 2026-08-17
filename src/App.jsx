@@ -1434,6 +1434,7 @@ export default function App() {
   const [sheetNameSearch, setSheetNameSearch] = useState('');
   const [sheetReason, setSheetReason] = useState('');
   const [showSheetDropdown, setShowSheetDropdown] = useState(false);
+  const [sheetSelectedStudentIds, setSheetSelectedStudentIds] = useState([]);
 
   // Morning Bliss State
   const [morningBlissClass, setMorningBlissClass] = useState('');
@@ -1822,48 +1823,71 @@ EV: ${morningBlissEv}`;
 
   const handleSheetSubmit = (e) => {
     e.preventDefault();
-    if (!sheetClass || !sheetNameSearch || !sheetReason || !performanceView) return;
+
+    let targetStudentIds = [...sheetSelectedStudentIds];
+
+    if (targetStudentIds.length === 0 && sheetNameSearch.trim()) {
+      const classMatch = (s) => (!sheetClass || sheetClass === 'ALL') ? true : s.class === sheetClass;
+      const match = students.find(s => classMatch(s) && s.name.toLowerCase() === sheetNameSearch.trim().toLowerCase());
+      const partial = match || students.find(s => classMatch(s) && s.name.toLowerCase().startsWith(sheetNameSearch.trim().toLowerCase()));
+      if (partial) {
+        targetStudentIds = [partial.id];
+      }
+    }
+
+    if (!sheetClass || targetStudentIds.length === 0 || !sheetReason || !performanceView) {
+      if (targetStudentIds.length === 0) {
+        alert("Please select at least one student!");
+      }
+      return;
+    }
 
     let typeLabel = '';
     if (performanceView === 'sheets_black') typeLabel = 'Black Sheet';
     if (performanceView === 'sheets_yellow') typeLabel = 'Yellow Sheet';
-    if (performanceView === 'sheets_apology') typeLabel = 'Apology';
+    if (performanceView === 'sheets_apology') typeLabel = 'Apology Sheet';
 
-    const match = students.find(s => s.class === sheetClass && s.name.toLowerCase() === sheetNameSearch.toLowerCase());
-    const studentToUpdate = match || students.find(s => s.class === sheetClass && s.name.toLowerCase().startsWith(sheetNameSearch.toLowerCase()));
+    let selectedStudentSummaries = [];
 
-    if (!studentToUpdate) {
-      alert("Student not found!");
-      return;
-    }
-
-    if (performanceView === 'sheets_black') {
-      updateStudentField(studentToUpdate.id, 'sheetTally', (studentToUpdate.sheetTally || 0) - 8);
-      updateStudentField(studentToUpdate.id, 'ineligible', true);
-      updateStudentField(studentToUpdate.id, 'ineligibleReason', sheetReason ? `Black Sheet - ${sheetReason}` : 'Black Sheet');
-      logHistory(studentToUpdate.id, 'Black Sheet', -8, sheetReason);
-    } else if (performanceView === 'sheets_yellow') {
-      updateStudentField(studentToUpdate.id, 'sheetTally', (studentToUpdate.sheetTally || 0) - 4);
-      logHistory(studentToUpdate.id, 'Yellow Sheet', -4, sheetReason);
-    } else if (performanceView === 'sheets_apology') {
-      updateStudentField(studentToUpdate.id, 'sheetTally', (studentToUpdate.sheetTally || 0) - 1.5);
-      logHistory(studentToUpdate.id, 'Apology Sheet', -1.5, sheetReason);
-    }
+    targetStudentIds.forEach(studentId => {
+      const studentToUpdate = students.find(s => s.id === studentId);
+      if (studentToUpdate) {
+        if (performanceView === 'sheets_black') {
+          updateStudentField(studentToUpdate.id, 'sheetTally', (studentToUpdate.sheetTally || 0) - 8);
+          updateStudentField(studentToUpdate.id, 'ineligible', true);
+          updateStudentField(studentToUpdate.id, 'ineligibleReason', sheetReason ? `Black Sheet - ${sheetReason}` : 'Black Sheet');
+          logHistory(studentToUpdate.id, 'Black Sheet', -8, sheetReason);
+        } else if (performanceView === 'sheets_yellow') {
+          updateStudentField(studentToUpdate.id, 'sheetTally', (studentToUpdate.sheetTally || 0) - 4);
+          logHistory(studentToUpdate.id, 'Yellow Sheet', -4, sheetReason);
+        } else if (performanceView === 'sheets_apology') {
+          updateStudentField(studentToUpdate.id, 'sheetTally', (studentToUpdate.sheetTally || 0) - 1.5);
+          logHistory(studentToUpdate.id, 'Apology Sheet', -1.5, sheetReason);
+        }
+        selectedStudentSummaries.push(`- ${studentToUpdate.name} (${studentToUpdate.class.toUpperCase()})`);
+      }
+    });
 
     setSheetNameSearch('');
+    setSheetSelectedStudentIds([]);
     setSheetReason('');
+    setShowSheetDropdown(false);
 
     const now = new Date();
     const formattedDate = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const formattedTime = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const classDisplay = sheetClass === 'ALL' ? 'ALL CLASSES' : sheetClass.toUpperCase();
 
     const sheetSummary = `📄 *SHEET REPORT*
 Type: *${typeLabel}*
 Date: ${formattedDate}
 Time: ${formattedTime}
-Class: *${sheetClass.toUpperCase()}*
-Name: ${studentToUpdate.name}
-Reason: ${sheetReason}`;
+Class: *${classDisplay}*
+Total Students: *${selectedStudentSummaries.length}*
+Reason: ${sheetReason}
+
+Students:
+${selectedStudentSummaries.join('\n')}`;
 
     setSummaryText(sheetSummary);
     setShowSummaryModal(true);
@@ -6420,16 +6444,58 @@ ${selectedStudentSummaries.join('\n')}`;
                         <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Select Class</label>
                         <select
                           value={sheetClass}
-                          onChange={(e) => setSheetClass(e.target.value)}
-                          className="w-full p-4 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#1A365D] bg-slate-50 appearance-none"
+                          onChange={(e) => {
+                            setSheetClass(e.target.value);
+                            setSheetSelectedStudentIds([]);
+                          }}
+                          className="w-full p-4 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#1A365D] bg-slate-50 appearance-none cursor-pointer"
                           required
                         >
                           <option value="" disabled>Choose a class...</option>
+                          <option value="ALL">🌟 ALL CLASSES ({students.length} Students)</option>
                           {visibleClasses.map(cls => <option key={cls} value={cls}>Class {cls.toUpperCase()}</option>)}
                         </select>
                       </div>
+
+                      {/* Multi-selected Student Chips */}
+                      {sheetSelectedStudentIds.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 p-3 bg-blue-50/80 border border-blue-200 rounded-xl">
+                          <div className="w-full flex items-center justify-between text-xs font-extrabold text-blue-900 mb-1">
+                            <span>Selected Students ({sheetSelectedStudentIds.length}):</span>
+                            <button
+                              type="button"
+                              onClick={() => setSheetSelectedStudentIds([])}
+                              className="text-rose-600 hover:underline text-[11px] font-bold"
+                            >
+                              Clear All
+                            </button>
+                          </div>
+                          {sheetSelectedStudentIds.map(id => {
+                            const st = students.find(s => s.id === id);
+                            if (!st) return null;
+                            return (
+                              <span
+                                key={id}
+                                className="inline-flex items-center gap-1.5 px-3 py-1 bg-white border border-blue-200 text-blue-900 rounded-lg text-xs font-bold shadow-2xs"
+                              >
+                                {st.name} <span className="text-[10px] text-slate-400 font-extrabold">({st.class.toUpperCase()})</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setSheetSelectedStudentIds(prev => prev.filter(item => item !== id))}
+                                  className="text-slate-400 hover:text-rose-600 font-bold ml-1 cursor-pointer"
+                                >
+                                  ✕
+                                </button>
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+
                       <div className="relative">
-                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Student Name</label>
+                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">
+                          Student Name {sheetSelectedStudentIds.length > 0 ? `(${sheetSelectedStudentIds.length} Selected)` : ''}
+                        </label>
                         <div className="relative">
                           <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                           <input
@@ -6440,33 +6506,81 @@ ${selectedStudentSummaries.join('\n')}`;
                               setShowSheetDropdown(true);
                             }}
                             onFocus={() => setShowSheetDropdown(true)}
-                            placeholder="Type student name..."
-                            className="w-full p-4 pl-12 text-lg border border-slate-200 rounded-xl font-bold focus:outline-none focus:border-[#1A365D] bg-slate-50"
-                            required
+                            placeholder={sheetSelectedStudentIds.length > 0 ? "Search more students..." : "Type student name to search..."}
+                            className="w-full p-4 pl-12 text-base border border-slate-200 rounded-xl font-bold focus:outline-none focus:border-[#1A365D] bg-slate-50"
+                            required={sheetSelectedStudentIds.length === 0}
                           />
                         </div>
-                        {sheetNameSearch && sheetClass && showSheetDropdown && (
-                          <div className="mt-2 bg-white border border-slate-200 rounded-xl shadow-sm max-h-60 overflow-y-auto z-10 absolute left-0 right-0">
-                            {students.filter(s => s.class === sheetClass && s.name.toLowerCase().startsWith(sheetNameSearch.toLowerCase())).map(s => (
-                              <div
-                                key={s.id}
-                                className="p-4 hover:bg-slate-50 cursor-pointer font-bold text-slate-700 border-b border-slate-100 last:border-0 flex items-center justify-between transition-colors group"
-                                onClick={() => {
-                                  setSheetNameSearch(s.name);
-                                  setShowSheetDropdown(false);
-                                }}
-                              >
-                                {s.name}
-                                <CheckCircle2 className="w-5 h-5 text-emerald-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                              </div>
-                            ))}
-                            {students.filter(s => s.class === sheetClass && s.name.toLowerCase().startsWith(sheetNameSearch.toLowerCase())).length === 0 && (
-                              <div className="p-4 text-center text-slate-400 font-semibold text-sm">
-                                No matching student found in Class {sheetClass.toUpperCase()}
-                              </div>
-                            )}
-                          </div>
-                        )}
+
+                        {sheetClass && showSheetDropdown && (() => {
+                          const availableStudents = students.filter(s => {
+                            const matchesClass = sheetClass === 'ALL' ? true : s.class === sheetClass;
+                            const matchesSearch = !sheetNameSearch || s.name.toLowerCase().includes(sheetNameSearch.toLowerCase()) || s.class.toLowerCase().includes(sheetNameSearch.toLowerCase());
+                            return matchesClass && matchesSearch;
+                          });
+
+                          return (
+                            <div className="mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-64 overflow-y-auto z-30 absolute left-0 right-0 p-2 flex flex-col gap-1.5">
+                              {availableStudents.length > 0 && (
+                                <div className="flex items-center justify-between p-2.5 bg-slate-50 border-b border-slate-100 rounded-xl text-xs font-bold text-slate-600 shrink-0">
+                                  <span>{availableStudents.length} Students found</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const allFilteredIds = availableStudents.map(s => s.id);
+                                      const allSelected = allFilteredIds.every(id => sheetSelectedStudentIds.includes(id));
+                                      if (allSelected) {
+                                        setSheetSelectedStudentIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+                                      } else {
+                                        setSheetSelectedStudentIds(prev => Array.from(new Set([...prev, ...allFilteredIds])));
+                                      }
+                                    }}
+                                    className="text-blue-600 hover:underline font-black cursor-pointer"
+                                  >
+                                    {availableStudents.every(s => sheetSelectedStudentIds.includes(s.id)) ? 'Deselect All' : 'Select All Filtered'}
+                                  </button>
+                                </div>
+                              )}
+
+                              {availableStudents.map(s => {
+                                const isSelected = sheetSelectedStudentIds.includes(s.id);
+                                return (
+                                  <div
+                                    key={s.id}
+                                    className={`p-3 rounded-xl cursor-pointer font-bold text-xs flex items-center justify-between transition-colors border ${isSelected
+                                        ? 'bg-blue-50 border-blue-300 text-blue-900 shadow-2xs'
+                                        : 'hover:bg-slate-50 border-slate-100 text-slate-700'
+                                      }`}
+                                    onClick={() => {
+                                      setSheetSelectedStudentIds(prev =>
+                                        prev.includes(s.id) ? prev.filter(id => id !== s.id) : [...prev, s.id]
+                                      );
+                                    }}
+                                  >
+                                    <div className="flex items-center gap-2.5">
+                                      <input
+                                        type="checkbox"
+                                        checked={isSelected}
+                                        onChange={() => { }}
+                                        className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500 cursor-pointer"
+                                      />
+                                      <span>{s.name}</span>
+                                    </div>
+                                    <span className="text-[10px] font-extrabold uppercase px-2 py-0.5 bg-slate-100 text-slate-600 rounded-md border border-slate-200">
+                                      Class {s.class.toUpperCase()}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+
+                              {availableStudents.length === 0 && (
+                                <div className="p-4 text-center text-slate-400 font-semibold text-sm">
+                                  No matching student found {sheetClass !== 'ALL' ? `in Class ${sheetClass.toUpperCase()}` : ''}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                       <div>
                         <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">Reason</label>
@@ -6479,8 +6593,11 @@ ${selectedStudentSummaries.join('\n')}`;
                           required
                         />
                       </div>
-                      <button type="submit" className="w-full py-4 mt-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl transition-all shadow-md active:scale-[0.98] flex justify-center items-center gap-2">
-                        <Send className="w-5 h-5" /> Submit Sheet
+                      <button type="submit" className="w-full py-4 mt-2 bg-blue-600 hover:bg-blue-700 text-white font-extrabold rounded-xl transition-all shadow-md active:scale-[0.98] flex justify-center items-center gap-2 cursor-pointer">
+                        <Send className="w-5 h-5" />
+                        <span>
+                          Submit Sheet {sheetSelectedStudentIds.length > 0 ? `(${sheetSelectedStudentIds.length} Students)` : ''}
+                        </span>
                       </button>
                     </form>
                   </div>
