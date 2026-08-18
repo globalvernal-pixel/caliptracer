@@ -965,7 +965,7 @@ app.post('/api/phone-passes', async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'ISSUED', $10)
       RETURNING *
     `;
-    const values = [passId, studentId, studentName, studentClass, phoneModel || '', studentType || 'school', startTs, allowedTs, reason || 'Calling Home', issuedBy || 'Admin'];
+    const values = [passId, studentId, studentName, studentClass, phoneModel || '', studentType || 'school', startTs, allowedTs, reason || '', issuedBy || 'Admin'];
 
     const result = await pool.query(query, values);
     const row = result.rows[0];

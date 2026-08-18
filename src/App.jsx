@@ -2185,7 +2185,7 @@ ${selectedStudentSummaries.join('\n')}`;
   const [showIssuePhonePassModal, setShowIssuePhonePassModal] = useState(false);
   const [phonePassStep, setPhonePassStep] = useState(1); // 1: Select Student, 2: Pass Form
   const [phonePassSelectedStudent, setPhonePassSelectedStudent] = useState(null);
-  const [phonePassReason, setPhonePassReason] = useState('Calling Home');
+  const [phonePassReason, setPhonePassReason] = useState('');
   const [phonePassAllowedMins, setPhonePassAllowedMins] = useState(60);
   const [phonePassCustomAllowedTime, setPhonePassCustomAllowedTime] = useState('');
   const [phonePassReturnDate, setPhonePassReturnDate] = useState(() => new Date().toISOString().split('T')[0]);
@@ -2340,7 +2340,7 @@ ${selectedStudentSummaries.join('\n')}`;
       studentType: phonePassSelectedStudent.phoneType || 'school',
       startTime: now.toISOString(),
       allowedUntil: allowedTs.toISOString(),
-      reason: phonePassReason || 'Calling Home',
+      reason: phonePassReason || '',
       issuedBy: currentUser?.username || 'Admin'
     };
 
@@ -2361,7 +2361,7 @@ ${selectedStudentSummaries.join('\n')}`;
       setPhonePasses(prev => [createdPass, ...prev]);
       setShowIssuePhonePassModal(false);
       setPhonePassSelectedStudent(null);
-      setPhonePassReason('Calling Home');
+      setPhonePassReason('');
       setPhonePassCustomAllowedTime('');
       setPhonePassReturnDate(new Date().toISOString().split('T')[0]);
       setPhonePassStep(1);
@@ -11937,7 +11937,7 @@ ${selectedStudentSummaries.join('\n')}`;
                       required
                     />
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {['Calling Home', 'Study / Project', 'Emergency Call', 'Doctor Appt', 'Personal'].map(r => (
+                      {['OTB', 'blithness', 'fest'].map(r => (
                         <button
                           key={r}
                           type="button"
