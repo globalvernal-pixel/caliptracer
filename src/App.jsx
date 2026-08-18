@@ -3372,7 +3372,7 @@ ${selectedStudentSummaries.join('\n')}`;
     );
 
     let lines = [];
-    const clsName = (selectedClass || (selectedStudents[0] ? selectedStudents[0].class : '')).toLowerCase();
+    const clsName = (selectedClass || (selectedStudents[0] ? selectedStudents[0].class : '')).toUpperCase();
     if (clsName) {
       lines.push(clsName);
     }
@@ -3436,6 +3436,10 @@ ${selectedStudentSummaries.join('\n')}`;
     );
 
     let lines = [];
+    const clsName = (selectedClass || (selectedStudents[0] ? selectedStudents[0].class : '')).toUpperCase();
+    if (clsName) {
+      lines.push(clsName);
+    }
     lines.push(`${sessionTally} tally`);
     selectedStudents.forEach(student => {
       lines.push(student.name);
