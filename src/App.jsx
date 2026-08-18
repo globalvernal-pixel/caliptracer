@@ -2185,6 +2185,7 @@ ${selectedStudentSummaries.join('\n')}`;
   const [showIssuePhonePassModal, setShowIssuePhonePassModal] = useState(false);
   const [phonePassStep, setPhonePassStep] = useState(1); // 1: Select Student, 2: Pass Form
   const [phonePassSelectedStudent, setPhonePassSelectedStudent] = useState(null);
+  const [phonePassSelectedStudents, setPhonePassSelectedStudents] = useState([]);
   const [phonePassReason, setPhonePassReason] = useState('');
   const [phonePassAllowedMins, setPhonePassAllowedMins] = useState(60);
   const [phonePassCustomAllowedTime, setPhonePassCustomAllowedTime] = useState('');
@@ -2297,20 +2298,20 @@ ${selectedStudentSummaries.join('\n')}`;
 
   const handleIssuePhonePassSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!phonePassSelectedStudent) return;
+    const targetStudents = phonePassSelectedStudents.length > 0
+      ? phonePassSelectedStudents
+      : (phonePassSelectedStudent ? [phonePassSelectedStudent] : []);
 
-    if (!phonePassSelectedStudent.phoneModel || !phonePassSelectedStudent.phoneModel.trim()) {
-      alert(`⚠️ Cannot Issue Phone Pass! Student "${phonePassSelectedStudent.name}" has no Phone Name registered. Please add the phone name in Phone Pass Management first.`);
-      return;
-    }
+    if (targetStudents.length === 0) return;
 
-    // Check if student ALREADY has an active pass (status 'ISSUED' or 'OUT')
-    const activePassExists = phonePasses.some(
-      p => String(p.studentId) === String(phonePassSelectedStudent.id) && ['ISSUED', 'OUT'].includes(p.status)
+    // Check if any selected student has an active pass (status 'ISSUED' or 'OUT')
+    const activePassStudents = targetStudents.filter(st =>
+      phonePasses.some(p => String(p.studentId) === String(st.id) && ['ISSUED', 'OUT'].includes(p.status))
     );
 
-    if (activePassExists) {
-      alert(`⚠️ Student ${phonePassSelectedStudent.name} already has an active phone pass! Please return the previous pass before issuing a new one.`);
+    if (activePassStudents.length > 0) {
+      const names = activePassStudents.map(s => s.name).join(', ');
+      alert(`⚠️ Student(s) [${names}] already have an active phone pass! Please return previous pass(es) before issuing a new one.`);
       return;
     }
 
@@ -2331,44 +2332,57 @@ ${selectedStudentSummaries.join('\n')}`;
       allowedTs = new Date(now.getTime() + (Number(phonePassAllowedMins) || 60) * 60000);
     }
 
-    const passData = {
-      id: 'pass-' + Date.now(),
-      studentId: phonePassSelectedStudent.id,
-      studentName: phonePassSelectedStudent.name,
-      studentClass: phonePassSelectedStudent.class,
-      phoneModel: phonePassSelectedStudent.phoneModel || 'Standard Phone',
-      studentType: phonePassSelectedStudent.phoneType || 'school',
+    const passesToCreate = targetStudents.map(st => ({
+      id: 'pass-' + Date.now() + '-' + Math.floor(Math.random() * 1000) + '-' + st.id,
+      studentId: st.id,
+      studentName: st.name,
+      studentClass: st.class,
+      phoneModel: st.phoneModel || 'Standard Phone',
+      studentType: st.phoneType || 'school',
       startTime: now.toISOString(),
       allowedUntil: allowedTs.toISOString(),
       reason: phonePassReason || '',
       issuedBy: currentUser?.username || 'Admin'
-    };
+    }));
 
     try {
-      const res = await fetch('/api/phone-passes', {
+      const res = await fetch('/api/phone-passes/batch', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(passData)
+        body: JSON.stringify({ passes: passesToCreate })
       });
 
       if (!res.ok) {
-        const errData = await res.json();
-        alert(errData.error || "Failed to issue phone pass");
-        return;
+        for (const passData of passesToCreate) {
+          await fetch('/api/phone-passes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(passData)
+          }).catch(() => {});
+        }
+      } else {
+        const data = await res.json();
+        if (data.passes && data.passes.length > 0) {
+          setPhonePasses(prev => [...data.passes, ...prev]);
+        } else {
+          setPhonePasses(prev => [...passesToCreate.map(p => ({ ...p, status: 'ISSUED', isLate: false, createdAt: now.toISOString() })), ...prev]);
+        }
       }
 
-      const createdPass = await res.json();
-      setPhonePasses(prev => [createdPass, ...prev]);
+      fetchPhonePasses();
+
       setShowIssuePhonePassModal(false);
       setPhonePassSelectedStudent(null);
+      setPhonePassSelectedStudents([]);
       setPhonePassReason('');
       setPhonePassCustomAllowedTime('');
       setPhonePassReturnDate(new Date().toISOString().split('T')[0]);
       setPhonePassStep(1);
     } catch (err) {
-      setPhonePasses(prev => [{ ...passData, status: 'ISSUED', isLate: false, createdAt: now.toISOString() }, ...prev]);
+      setPhonePasses(prev => [...passesToCreate.map(p => ({ ...p, status: 'ISSUED', isLate: false, createdAt: now.toISOString() })), ...prev]);
       setShowIssuePhonePassModal(false);
       setPhonePassSelectedStudent(null);
+      setPhonePassSelectedStudents([]);
       setPhonePassReturnDate(new Date().toISOString().split('T')[0]);
       setPhonePassStep(1);
     }
@@ -7395,6 +7409,7 @@ ${selectedStudentSummaries.join('\n')}`;
                     onClick={() => {
                       setPhonePassStep(1);
                       setPhonePassSelectedStudent(null);
+                      setPhonePassSelectedStudents([]);
                       setPhonePassReason('');
                       setPhonePassAllowedMins(60);
                       setPhonePassCustomAllowedTime('');
@@ -11689,14 +11704,16 @@ ${selectedStudentSummaries.join('\n')}`;
               <div className="overflow-y-auto pr-1 flex flex-col gap-4">
 
               {phonePassStep === 1 ? (
-                /* STEP 1: SELECT STUDENT */
+                /* STEP 1: SELECT SCHOOL STUDENT(S) */
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-extrabold text-slate-500 uppercase tracking-wider">
-                      Step 1: Select School Student
+                      Step 1: Select School Student(s)
                     </span>
-                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-md">
-                      Showing School Category Students
+                    <span className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-0.5 rounded-md border border-emerald-100">
+                      {phonePassSelectedStudents.length > 0
+                        ? `${phonePassSelectedStudents.length} Selected`
+                        : 'Showing School Category Students'}
                     </span>
                   </div>
 
@@ -11721,25 +11738,36 @@ ${selectedStudentSummaries.join('\n')}`;
                         (s.registerNumber && s.registerNumber.includes(phonePassStudentSearch))
                       )
                       .map(st => {
-                        const hasActivePass = phonePasses.some(p => String(p.studentId) === String(st.id) && p.status === 'OUT');
+                        const hasActivePass = phonePasses.some(p => String(p.studentId) === String(st.id) && ['ISSUED', 'OUT'].includes(p.status));
+                        const isSelected = phonePassSelectedStudents.some(s => String(s.id) === String(st.id));
 
                         return (
-                          <button
+                          <div
                             key={st.id}
-                            type="button"
                             onClick={() => {
-                              setPhonePassSelectedStudent(st);
-                              setPhonePassStep(2);
+                              if (isSelected) {
+                                setPhonePassSelectedStudents(prev => prev.filter(s => String(s.id) !== String(st.id)));
+                              } else {
+                                setPhonePassSelectedStudents(prev => [...prev, st]);
+                              }
                             }}
-                            className="w-full text-left p-3 hover:bg-emerald-50 flex items-center justify-between transition-colors group"
+                            className={`w-full text-left p-3 flex items-center justify-between transition-all cursor-pointer select-none group border-l-4 ${
+                              isSelected
+                                ? 'bg-emerald-50/80 border-l-emerald-600'
+                                : 'hover:bg-slate-50 border-l-transparent'
+                            }`}
                           >
                             <div className="flex items-center gap-3">
-                              <div className="w-8 h-8 rounded-xl bg-emerald-100 text-emerald-800 font-extrabold text-xs flex items-center justify-center">
+                              <div className={`w-8 h-8 rounded-xl font-extrabold text-xs flex items-center justify-center transition-colors ${
+                                isSelected ? 'bg-emerald-600 text-white' : 'bg-emerald-100 text-emerald-800'
+                              }`}>
                                 {st.name.charAt(0)}
                               </div>
                               <div>
                                 <div className="flex items-center gap-2">
-                                  <h4 className="font-extrabold text-xs text-slate-800 group-hover:text-emerald-800">{st.name}</h4>
+                                  <h4 className={`font-extrabold text-xs transition-colors ${
+                                    isSelected ? 'text-emerald-900' : 'text-slate-800 group-hover:text-emerald-800'
+                                  }`}>{st.name}</h4>
                                   {st.registerNumber && (
                                     <span className="font-mono text-[10px] font-black text-indigo-700 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100">
                                       #{st.registerNumber}
@@ -11750,80 +11778,103 @@ ${selectedStudentSummaries.join('\n')}`;
                               </div>
                             </div>
 
-                            <div>
-                              {hasActivePass ? (
+                            <div className="flex items-center gap-2">
+                              {hasActivePass && (
                                 <span className="text-[10px] font-black bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full uppercase">
-                                  Active OUT Pass
-                                </span>
-                              ) : (
-                                <span className="text-xs font-extrabold text-emerald-700 group-hover:translate-x-1 transition-transform block">
-                                  Select →
+                                  Active Pass
                                 </span>
                               )}
+                              <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-all ${
+                                isSelected
+                                  ? 'bg-emerald-600 text-white border border-emerald-600 shadow-xs'
+                                  : 'border-2 border-slate-300 group-hover:border-emerald-500 bg-white'
+                              }`}>
+                                {isSelected && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                              </div>
                             </div>
-                          </button>
+                          </div>
                         );
                       })}
                   </div>
 
-                  <div className="pt-2">
+                  <div className="flex flex-col gap-2 pt-1">
+                    <button
+                      type="button"
+                      disabled={phonePassSelectedStudents.length === 0}
+                      onClick={() => {
+                        if (phonePassSelectedStudents.length > 0) {
+                          setPhonePassSelectedStudent(phonePassSelectedStudents[0]);
+                          setPhonePassStep(2);
+                        }
+                      }}
+                      className={`w-full py-3.5 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-md ${
+                        phonePassSelectedStudents.length > 0
+                          ? 'bg-emerald-600 hover:bg-emerald-700 text-white cursor-pointer active:scale-[0.99]'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                      }`}
+                    >
+                      <span>Proceed to Pass Details ({phonePassSelectedStudents.length} Selected)</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
+
                     <button
                       type="button"
                       onClick={() => setShowIssuePhonePassModal(false)}
-                      className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-extrabold text-xs uppercase tracking-wider"
+                      className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-extrabold text-xs uppercase tracking-wider"
                     >
                       Cancel
                     </button>
                   </div>
                 </div>
               ) : (
-                /* STEP 2: ISSUE FORM WITH PRE-FILLED READ-ONLY DETAILS & DURATION */
+                /* STEP 2: ISSUE FORM WITH PRE-FILLED DETAILS & DURATION */
                 <form onSubmit={handleIssuePhonePassSubmit} className="flex flex-col gap-4">
-
-                  {/* Phone Model missing warning check */}
-                  {(!phonePassSelectedStudent?.phoneModel || !phonePassSelectedStudent?.phoneModel.trim()) && (
-                    <div className="p-3 bg-amber-100 border border-amber-300 rounded-2xl text-amber-900 text-xs font-extrabold flex items-center gap-2">
-                      <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
-                      <span>⚠️ Warning: Phone Name / Model is missing for this student. You must register a Phone Name before issuing a pass.</span>
-                    </div>
-                  )}
-
-                  {/* Active Pass Warning check */}
-                  {phonePasses.some(p => String(p.studentId) === String(phonePassSelectedStudent?.id) && p.status === 'OUT') && (
-                    <div className="p-3 bg-rose-100 border border-rose-300 rounded-2xl text-rose-800 text-xs font-extrabold flex items-center gap-2">
-                      <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
-                      <span>⚠️ Warning: Student already has an active OUT pass! Previous pass must be marked IN before issuing a new pass.</span>
-                    </div>
-                  )}
 
                   {/* Pre-filled Read-only Student Details */}
                   <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200 flex flex-col gap-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-extrabold text-slate-400 uppercase">Student Name (Read Only)</span>
+                      <span className="text-[10px] font-extrabold text-slate-400 uppercase">
+                        Selected Student(s) ({phonePassSelectedStudents.length})
+                      </span>
                       <button
                         type="button"
                         onClick={() => setPhonePassStep(1)}
                         className="text-[10px] font-extrabold text-emerald-700 hover:underline"
                       >
-                        Change Student
+                        Change Selection
                       </button>
                     </div>
-                    <div className="text-sm font-black text-slate-800 flex items-center gap-2">
-                      <span>{phonePassSelectedStudent?.name}</span>
-                      {phonePassSelectedStudent?.registerNumber && (
-                        <span className="font-mono text-xs font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
-                          #{phonePassSelectedStudent?.registerNumber}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md uppercase">
-                        Class {phonePassSelectedStudent?.class}
-                      </span>
-                      <span className="text-[10px] font-extrabold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md uppercase">
-                        School Student
-                      </span>
-                    </div>
+                    
+                    {phonePassSelectedStudents.length > 1 ? (
+                      <div className="flex flex-wrap gap-1.5 max-h-28 overflow-y-auto pt-1">
+                        {phonePassSelectedStudents.map(st => (
+                          <span key={st.id} className="text-xs font-bold bg-white text-slate-800 px-2.5 py-1 rounded-lg border border-slate-200 flex items-center gap-1.5 shadow-2xs">
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block"></span>
+                            <span>{st.name}</span>
+                            <span className="text-[10px] text-slate-400">({st.class})</span>
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <>
+                        <div className="text-sm font-black text-slate-800 flex items-center gap-2">
+                          <span>{phonePassSelectedStudents[0]?.name || phonePassSelectedStudent?.name}</span>
+                          {(phonePassSelectedStudents[0]?.registerNumber || phonePassSelectedStudent?.registerNumber) && (
+                            <span className="font-mono text-xs font-black text-indigo-700 bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100">
+                              #{phonePassSelectedStudents[0]?.registerNumber || phonePassSelectedStudent?.registerNumber}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-[10px] font-extrabold bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-md uppercase">
+                            Class {phonePassSelectedStudents[0]?.class || phonePassSelectedStudent?.class}
+                          </span>
+                          <span className="text-[10px] font-extrabold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-md uppercase">
+                            School Student
+                          </span>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Phone Model / Device Details Input */}
