@@ -7395,7 +7395,7 @@ ${selectedStudentSummaries.join('\n')}`;
                     onClick={() => {
                       setPhonePassStep(1);
                       setPhonePassSelectedStudent(null);
-                      setPhonePassReason('Calling Home');
+                      setPhonePassReason('');
                       setPhonePassAllowedMins(60);
                       setPhonePassCustomAllowedTime('');
                       setShowIssuePhonePassModal(true);
@@ -11937,7 +11937,7 @@ ${selectedStudentSummaries.join('\n')}`;
                       required
                     />
                     <div className="flex flex-wrap gap-1 mt-2">
-                      {['OTB', 'blithness', 'fest'].map(r => (
+                      {['OTP', 'blitness', 'fest'].map(r => (
                         <button
                           key={r}
                           type="button"
