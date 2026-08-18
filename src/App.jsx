@@ -1847,26 +1847,39 @@ EV: ${morningBlissEv}`;
     if (performanceView === 'sheets_yellow') typeLabel = 'Yellow Sheet';
     if (performanceView === 'sheets_apology') typeLabel = 'Apology Sheet';
 
+    let studentsToUpsert = [];
+    let updatedStudentsList = [...students];
     let selectedStudentSummaries = [];
 
     targetStudentIds.forEach(studentId => {
-      const studentToUpdate = students.find(s => s.id === studentId);
+      const studentToUpdate = updatedStudentsList.find(s => s.id === studentId);
       if (studentToUpdate) {
+        let updated = { ...studentToUpdate };
         if (performanceView === 'sheets_black') {
-          updateStudentField(studentToUpdate.id, 'sheetTally', (studentToUpdate.sheetTally || 0) - 8);
-          updateStudentField(studentToUpdate.id, 'ineligible', true);
-          updateStudentField(studentToUpdate.id, 'ineligibleReason', sheetReason ? `Black Sheet - ${sheetReason}` : 'Black Sheet');
+          updated.sheetTally = (studentToUpdate.sheetTally || 0) - 8;
+          updated.ineligible = true;
+          updated.ineligibleReason = sheetReason ? `Black Sheet - ${sheetReason}` : 'Black Sheet';
           logHistory(studentToUpdate.id, 'Black Sheet', -8, sheetReason);
         } else if (performanceView === 'sheets_yellow') {
-          updateStudentField(studentToUpdate.id, 'sheetTally', (studentToUpdate.sheetTally || 0) - 4);
+          updated.sheetTally = (studentToUpdate.sheetTally || 0) - 4;
           logHistory(studentToUpdate.id, 'Yellow Sheet', -4, sheetReason);
         } else if (performanceView === 'sheets_apology') {
-          updateStudentField(studentToUpdate.id, 'sheetTally', (studentToUpdate.sheetTally || 0) - 1.5);
+          updated.sheetTally = (studentToUpdate.sheetTally || 0) - 1.5;
           logHistory(studentToUpdate.id, 'Apology Sheet', -1.5, sheetReason);
         }
+        studentsToUpsert.push(updated);
         selectedStudentSummaries.push(`- ${studentToUpdate.name} (${studentToUpdate.class.toUpperCase()})`);
+        updatedStudentsList = updatedStudentsList.map(s => s.id === studentId ? updated : s);
       }
     });
+
+    setStudents(updatedStudentsList);
+
+    fetch('/api/students/bulk-upsert', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ students: studentsToUpsert })
+    }).catch(err => console.error("Error bulk upserting sheet records:", err));
 
     setSheetNameSearch('');
     setSheetSelectedStudentIds([]);
@@ -6447,6 +6460,7 @@ ${selectedStudentSummaries.join('\n')}`;
                           onChange={(e) => {
                             setSheetClass(e.target.value);
                             setSheetSelectedStudentIds([]);
+                            setShowSheetDropdown(true);
                           }}
                           className="w-full p-4 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#1A365D] bg-slate-50 appearance-none cursor-pointer"
                           required
@@ -6465,7 +6479,7 @@ ${selectedStudentSummaries.join('\n')}`;
                             <button
                               type="button"
                               onClick={() => setSheetSelectedStudentIds([])}
-                              className="text-rose-600 hover:underline text-[11px] font-bold"
+                              className="text-rose-600 hover:underline text-[11px] font-bold cursor-pointer"
                             >
                               Clear All
                             </button>
@@ -6493,9 +6507,21 @@ ${selectedStudentSummaries.join('\n')}`;
                       )}
 
                       <div className="relative">
-                        <label className="block text-xs font-bold text-slate-600 mb-2 uppercase tracking-wider">
-                          Student Name {sheetSelectedStudentIds.length > 0 ? `(${sheetSelectedStudentIds.length} Selected)` : ''}
-                        </label>
+                        <div className="flex items-center justify-between mb-2">
+                          <label className="block text-xs font-bold text-slate-600 uppercase tracking-wider">
+                            Student Name(s) {sheetSelectedStudentIds.length > 0 ? `(${sheetSelectedStudentIds.length} Selected)` : ''}
+                          </label>
+                          {sheetClass && (
+                            <button
+                              type="button"
+                              onClick={() => setShowSheetDropdown(!showSheetDropdown)}
+                              className="text-xs font-extrabold text-[#1A365D] hover:underline flex items-center gap-1 cursor-pointer"
+                            >
+                              {showSheetDropdown ? 'Hide List ✕' : 'Show List ▾'}
+                            </button>
+                          )}
+                        </div>
+
                         <div className="relative">
                           <Search className="w-5 h-5 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2" />
                           <input
@@ -6507,9 +6533,18 @@ ${selectedStudentSummaries.join('\n')}`;
                             }}
                             onFocus={() => setShowSheetDropdown(true)}
                             placeholder={sheetSelectedStudentIds.length > 0 ? "Search more students..." : "Type student name to search..."}
-                            className="w-full p-4 pl-12 text-base border border-slate-200 rounded-xl font-bold focus:outline-none focus:border-[#1A365D] bg-slate-50"
+                            className="w-full p-4 pl-12 pr-10 text-base border border-slate-200 rounded-xl font-bold focus:outline-none focus:border-[#1A365D] bg-slate-50"
                             required={sheetSelectedStudentIds.length === 0}
                           />
+                          {sheetNameSearch && (
+                            <button
+                              type="button"
+                              onClick={() => setSheetNameSearch('')}
+                              className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer p-1"
+                            >
+                              ✕
+                            </button>
+                          )}
                         </div>
 
                         {sheetClass && showSheetDropdown && (() => {
@@ -6521,26 +6556,35 @@ ${selectedStudentSummaries.join('\n')}`;
 
                           return (
                             <div className="mt-2 bg-white border border-slate-200 rounded-2xl shadow-xl max-h-64 overflow-y-auto z-30 absolute left-0 right-0 p-2 flex flex-col gap-1.5">
-                              {availableStudents.length > 0 && (
-                                <div className="flex items-center justify-between p-2.5 bg-slate-50 border-b border-slate-100 rounded-xl text-xs font-bold text-slate-600 shrink-0">
-                                  <span>{availableStudents.length} Students found</span>
+                              <div className="p-2.5 bg-slate-50 border-b border-slate-100 rounded-xl text-xs font-bold text-slate-600 flex items-center justify-between gap-2 shrink-0 sticky top-0 z-10">
+                                <span>{availableStudents.length} Students found</span>
+                                <div className="flex items-center gap-2">
+                                  {availableStudents.length > 0 && (
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const allFilteredIds = availableStudents.map(s => s.id);
+                                        const allSelected = allFilteredIds.every(id => sheetSelectedStudentIds.includes(id));
+                                        if (allSelected) {
+                                          setSheetSelectedStudentIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
+                                        } else {
+                                          setSheetSelectedStudentIds(prev => Array.from(new Set([...prev, ...allFilteredIds])));
+                                        }
+                                      }}
+                                      className="text-blue-600 hover:underline font-black cursor-pointer text-xs"
+                                    >
+                                      {availableStudents.every(s => sheetSelectedStudentIds.includes(s.id)) ? 'Deselect All' : 'Select All Filtered'}
+                                    </button>
+                                  )}
                                   <button
                                     type="button"
-                                    onClick={() => {
-                                      const allFilteredIds = availableStudents.map(s => s.id);
-                                      const allSelected = allFilteredIds.every(id => sheetSelectedStudentIds.includes(id));
-                                      if (allSelected) {
-                                        setSheetSelectedStudentIds(prev => prev.filter(id => !allFilteredIds.includes(id)));
-                                      } else {
-                                        setSheetSelectedStudentIds(prev => Array.from(new Set([...prev, ...allFilteredIds])));
-                                      }
-                                    }}
-                                    className="text-blue-600 hover:underline font-black cursor-pointer"
+                                    onClick={() => setShowSheetDropdown(false)}
+                                    className="text-xs font-black bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-1 rounded-lg transition-colors cursor-pointer"
                                   >
-                                    {availableStudents.every(s => sheetSelectedStudentIds.includes(s.id)) ? 'Deselect All' : 'Select All Filtered'}
+                                    Done / Hide List ✕
                                   </button>
                                 </div>
-                              )}
+                              </div>
 
                               {availableStudents.map(s => {
                                 const isSelected = sheetSelectedStudentIds.includes(s.id);
@@ -6587,6 +6631,7 @@ ${selectedStudentSummaries.join('\n')}`;
                         <input
                           type="text"
                           value={sheetReason}
+                          onFocus={() => setShowSheetDropdown(false)}
                           onChange={(e) => setSheetReason(e.target.value)}
                           placeholder="E.g. Disruption, late coming..."
                           className="w-full p-4 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:border-[#1A365D] bg-slate-50"
