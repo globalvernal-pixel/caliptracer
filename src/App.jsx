@@ -2052,8 +2052,12 @@ ${selectedStudentSummaries.join('\n')}`;
         };
         studentsToUpsert.push(updated);
         logHistory(s.id, isNeat ? 'N&O' : 'tally', isNeat ? 1 : amount, reason);
-        const starsStr = isNeat ? '⭐' : '⭐'.repeat(Math.max(1, Math.min(amount, 20)));
-        messageLines.push(`${s.name} ${amount}${isNeat ? 'tally' : (performanceSubmitData.type || 'star')} ${starsStr}`);
+        if (isNeat) {
+          messageLines.push(`${s.name} ${amount} Tally (${reason || 'Neat & Order'})`);
+        } else {
+          const starsStr = '⭐'.repeat(Math.max(1, Math.min(amount, 20)));
+          messageLines.push(`${s.name} ${amount}${performanceSubmitData.type || 'star'} ${starsStr}`);
+        }
         return updated;
       }
       return s;
@@ -9467,9 +9471,9 @@ ${selectedStudentSummaries.join('\n')}`;
                     className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold focus:outline-none focus:border-[#1A365D] focus:bg-white transition-colors"
                     placeholder={`e.g. ${performanceView === 'neat' ? 'Uniform not neat' : performanceView === 'room' ? 'Room untidy' : performanceView === 'spot' ? 'Talking in class' : 'Ineligible behaviour'}`}
                   />
-                  {showPerformanceReasonDropdown && performanceSubmitData.reason && performanceView === 'neat' && (
+                  {showPerformanceReasonDropdown && performanceView === 'neat' && (
                     (() => {
-                      const filtered = PREDEFINED_NEAT_REASONS.filter(f => f.reason.toLowerCase().includes(performanceSubmitData.reason.toLowerCase()));
+                      const filtered = PREDEFINED_NEAT_REASONS.filter(f => !performanceSubmitData.reason || f.reason.toLowerCase().includes(performanceSubmitData.reason.toLowerCase()));
                       if (filtered.length === 0) return null;
                       return (
                         <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-lg max-h-48 overflow-y-auto z-50 divide-y divide-slate-100">
@@ -9485,7 +9489,7 @@ ${selectedStudentSummaries.join('\n')}`;
                             >
                               <span className="font-semibold">{item.reason}</span>
                               <span className="text-xs font-extrabold px-2 py-1 rounded-full bg-rose-100 border border-rose-200 text-rose-800">
-                                {item.count}
+                                {item.count} Tallies
                               </span>
                             </button>
                           ))}
@@ -9494,6 +9498,35 @@ ${selectedStudentSummaries.join('\n')}`;
                     })()
                   )}
                 </div>
+
+                {performanceView === 'neat' && (
+                  <div className="flex flex-col gap-1.5">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wide">
+                      Quick Select Predefined Reason:
+                    </label>
+                    <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-1 bg-slate-50 border border-slate-200 rounded-xl">
+                      {PREDEFINED_NEAT_REASONS.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => {
+                            setPerformanceSubmitData({
+                              ...performanceSubmitData,
+                              reason: item.reason,
+                              count: item.count
+                            });
+                          }}
+                          className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all border ${performanceSubmitData.reason === item.reason
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                              : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-100'
+                            }`}
+                        >
+                          {item.reason} ({item.count})
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 <div className="pt-2">
                   <button
