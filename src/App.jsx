@@ -4304,9 +4304,10 @@ ${selectedStudentSummaries.join('\n')}`;
     }
 
     const wb = XLSX.utils.book_new();
+    const isDateFiltered = Boolean(irFromDate || irToDate);
 
     downloadSelectedClasses.forEach(clsName => {
-      const clsStudents = students.filter(s => s.class === clsName);
+      const clsStudents = students.filter(s => (s.class || '').trim().toLowerCase() === clsName.trim().toLowerCase());
       if (clsStudents.length > 0) {
         const data = clsStudents.map(s => {
           const sLogs = historyLogs.filter(log => {
@@ -4316,34 +4317,44 @@ ${selectedStudentSummaries.join('\n')}`;
           });
 
           let dynStar = 0, dynTally = 0, dynFine = 0, dynNo = 0, dynDiary = 0, dynSheet = 0;
+          let hasLogs = sLogs.length > 0;
+
           sLogs.forEach(log => {
-            const type = log.event_type.toLowerCase();
+            const type = (log.event_type || '').toLowerCase();
             if (type === 'star') dynStar += Math.abs(log.amount);
             else if (type === 'tally') dynTally += Math.abs(log.amount);
             else if (type === 'spot fine' || type === 'room fine' || type === 'spotfine' || type === 'roomfine' || type === 'fine') dynFine += 1;
             else if (type === 'n&o tally' || type === 'n&o') dynNo += Math.abs(log.amount);
-            else if (type === 'diary tally') dynDiary += Math.abs(log.amount);
+            else if (type === 'diary tally' || type === 'diary' || type === 'diary_tally') dynDiary += Math.abs(log.amount);
             else if (type.includes('sheet') || type === 'apology') dynSheet += Number(log.amount);
           });
 
-          const finalTotal = calculateTotalScore(dynStar, dynTally);
-          const attitudeTotal = (dynDiary * -0.5) + (dynFine * -1.5) + dynSheet;
-          const noIncidents = getNOIncidents(s);
+          // Accurate fallback to student properties if history logs are missing or no date filter is active
+          const finalStar = isDateFiltered ? (hasLogs ? dynStar : (Number(s.star) || 0)) : (dynStar > 0 ? dynStar : (Number(s.star) || 0));
+          const finalTally = isDateFiltered ? (hasLogs ? dynTally : (Number(s.tally) || 0)) : (dynTally > 0 ? dynTally : (Number(s.tally) || 0));
+          const finalNo = isDateFiltered ? (hasLogs ? dynNo : (Number(s.neatAndOrderTally) || Number(s.neat_and_order_tally) || 0)) : (dynNo > 0 ? dynNo : (Number(s.neatAndOrderTally) || Number(s.neat_and_order_tally) || 0));
+          const finalDiary = isDateFiltered ? (hasLogs && dynDiary > 0 ? dynDiary : (Number(s.diaryTally) || Number(s.diary_tally) || 0)) : (dynDiary > 0 ? dynDiary : (Number(s.diaryTally) || Number(s.diary_tally) || 0));
+          const finalFine = isDateFiltered ? (hasLogs && dynFine > 0 ? dynFine : getFineCount(s)) : (dynFine > 0 ? dynFine : getFineCount(s));
+          const finalSheet = isDateFiltered ? (hasLogs && dynSheet > 0 ? dynSheet : (Number(s.sheetTally) || Number(s.blackSheet) || Number(s.yellowSheet) || Number(s.apologyLetter) || 0)) : (dynSheet > 0 ? dynSheet : (Number(s.sheetTally) || Number(s.blackSheet) || Number(s.yellowSheet) || Number(s.apologyLetter) || 0));
+
+          const finalTotal = calculateTotalScore(finalStar, finalTally);
+          const attitudeTotal = (finalDiary * -0.5) + (finalFine * -1.5) + finalSheet;
+          const noIncidents = isDateFiltered ? (hasLogs ? dynNo : getNOIncidents(s)) : getNOIncidents(s);
           const noTotal = -noIncidents;
           const noGrade = calculateNOGrade(noTotal);
 
           return {
             'Name': s.name,
-            'Stars': dynStar,
-            'Tallies': dynTally,
+            'Stars': finalStar,
+            'Tallies': finalTally,
             'Total Score': finalTotal,
             'Grade': calculateGrade(finalTotal),
-            'N&O Tally': dynNo || s.neatAndOrderTally || 0,
+            'N&O Tally': finalNo,
             'N&O Total': noTotal,
             'N&O Grade': noGrade,
-            'Diary Tallies': dynDiary,
-            'Sheets': dynSheet,
-            'Fine': dynFine,
+            'Diary Tallies': finalDiary,
+            'Sheets': finalSheet,
+            'Fine': finalFine,
             'Total': attitudeTotal,
             'Attitude Grade': calculateAttitudeGrade(attitudeTotal)
           };
