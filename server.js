@@ -293,6 +293,25 @@ async function initDb() {
 
     await pool.query(`ALTER TABLE phone_register_students ADD COLUMN IF NOT EXISTS phone_model VARCHAR(100) DEFAULT '';`);
 
+    // --- IF Computer Lab Usage Sessions Table ---
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS if_sessions (
+        id SERIAL PRIMARY KEY,
+        student_id VARCHAR(100) NOT NULL,
+        student_name VARCHAR(255) NOT NULL,
+        student_class VARCHAR(50) DEFAULT '',
+        register_number VARCHAR(50) DEFAULT '',
+        device_category VARCHAR(20) NOT NULL,
+        device_detail VARCHAR(255) NOT NULL,
+        start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        end_time TIMESTAMP,
+        duration_seconds INTEGER DEFAULT 0,
+        status VARCHAR(20) DEFAULT 'ACTIVE',
+        issued_by VARCHAR(100) DEFAULT 'Admin',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
   } catch (err) {
     console.error('Database initialization error:', err);
   }
@@ -1340,6 +1359,224 @@ app.put('/api/students/:id/phone-type', async (req, res) => {
   } catch (err) {
     console.error('Error updating student phone info:', err);
     res.status(500).json({ error: 'Failed to update student phone info' });
+  }
+});
+
+// --- IF Computer Lab Usage API Endpoints ---
+
+function mapIfSessionRow(row) {
+  return {
+    id: row.id,
+    studentId: row.student_id,
+    studentName: row.student_name,
+    studentClass: row.student_class,
+    registerNumber: row.register_number,
+    deviceCategory: row.device_category,
+    deviceDetail: row.device_detail,
+    startTime: row.start_time,
+    endTime: row.end_time,
+    durationSeconds: parseInt(row.duration_seconds || 0, 10),
+    status: row.status,
+    issuedBy: row.issued_by,
+    createdAt: row.created_at
+  };
+}
+
+// 1. Get all active and recent IF sessions
+app.get('/api/if/sessions', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT * FROM if_sessions 
+      ORDER BY 
+        CASE WHEN status = 'ACTIVE' THEN 0 ELSE 1 END, 
+        start_time DESC
+    `);
+    res.json(result.rows.map(mapIfSessionRow));
+  } catch (err) {
+    console.error('Error fetching IF sessions:', err);
+    res.status(500).json({ error: 'Failed to fetch IF sessions' });
+  }
+});
+
+// 2. Get monthly quota usage for a student
+app.get('/api/if/quota/:studentId', async (req, res) => {
+  try {
+    const { studentId } = req.params;
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+
+    const result = await pool.query(`
+      SELECT 
+        COALESCE(SUM(
+          CASE 
+            WHEN status = 'COMPLETED' THEN duration_seconds
+            WHEN status = 'ACTIVE' THEN GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - start_time))::INTEGER)
+            ELSE 0
+          END
+        ), 0) AS total_used_seconds,
+        COUNT(*) FILTER (WHERE status = 'ACTIVE') AS active_count
+      FROM if_sessions
+      WHERE student_id = $1 AND start_time >= $2
+    `, [String(studentId), startOfMonth]);
+
+    const usedSeconds = parseInt(result.rows[0].total_used_seconds || 0, 10);
+    const hasActiveSession = parseInt(result.rows[0].active_count || 0, 10) > 0;
+    const maxMonthlySeconds = 10 * 3600; // 10 hours = 36000 seconds
+    const remainingSeconds = Math.max(0, maxMonthlySeconds - usedSeconds);
+
+    res.json({
+      studentId,
+      usedSeconds,
+      remainingSeconds,
+      maxMonthlySeconds,
+      hasActiveSession,
+      isLimitExceeded: usedSeconds >= maxMonthlySeconds
+    });
+  } catch (err) {
+    console.error('Error fetching IF quota:', err);
+    res.status(500).json({ error: 'Failed to fetch quota' });
+  }
+});
+
+// 3. Start a new IF session
+app.post('/api/if/sessions/start', async (req, res) => {
+  try {
+    const { studentId, studentName, studentClass, registerNumber, deviceCategory, deviceDetail, issuedBy, allowOverride } = req.body;
+    if (!studentId || !studentName || !deviceCategory || !deviceDetail) {
+      return res.status(400).json({ error: 'Missing required session parameters' });
+    }
+
+    // Check active session
+    const activeCheck = await pool.query(
+      "SELECT id FROM if_sessions WHERE student_id = $1 AND status = 'ACTIVE'",
+      [String(studentId)]
+    );
+    if (activeCheck.rows.length > 0) {
+      return res.status(400).json({ error: 'Student already has an active IF session running!' });
+    }
+
+    // Check monthly quota (10 hours = 36000s)
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    const quotaRes = await pool.query(`
+      SELECT COALESCE(SUM(
+        CASE 
+          WHEN status = 'COMPLETED' THEN duration_seconds
+          WHEN status = 'ACTIVE' THEN GREATEST(0, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - start_time))::INTEGER)
+          ELSE 0
+        END
+      ), 0) AS total_used 
+      FROM if_sessions 
+      WHERE student_id = $1 AND start_time >= $2
+    `, [String(studentId), startOfMonth]);
+
+    const usedSeconds = parseInt(quotaRes.rows[0].total_used || 0, 10);
+    if (usedSeconds >= 36000 && !allowOverride) {
+      return res.status(400).json({ 
+        error: 'Monthly limit of 10 hours reached for this student!',
+        quotaExceeded: true,
+        usedSeconds 
+      });
+    }
+
+    const result = await pool.query(`
+      INSERT INTO if_sessions (
+        student_id, student_name, student_class, register_number,
+        device_category, device_detail, start_time, status, issued_by
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, 'ACTIVE', $7)
+      RETURNING *
+    `, [
+      String(studentId),
+      studentName,
+      studentClass || '',
+      registerNumber || '',
+      deviceCategory,
+      deviceDetail,
+      issuedBy || 'Admin'
+    ]);
+
+    res.status(201).json(mapIfSessionRow(result.rows[0]));
+  } catch (err) {
+    console.error('Error starting IF session:', err);
+    res.status(500).json({ error: 'Failed to start IF session' });
+  }
+});
+
+// 4. End an active IF session
+app.put('/api/if/sessions/:id/end', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(`
+      UPDATE if_sessions
+      SET 
+        end_time = CURRENT_TIMESTAMP,
+        duration_seconds = GREATEST(1, EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - start_time))::INTEGER),
+        status = 'COMPLETED'
+      WHERE id = $1 AND status = 'ACTIVE'
+      RETURNING *
+    `, [id]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Active session not found or already ended' });
+    }
+
+    res.json(mapIfSessionRow(result.rows[0]));
+  } catch (err) {
+    console.error('Error ending IF session:', err);
+    res.status(500).json({ error: 'Failed to end IF session' });
+  }
+});
+
+// 5. Delete an IF session log
+app.delete('/api/if/sessions/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM if_sessions WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete IF session' });
+  }
+});
+
+// 6. Get IF session reports with filters
+app.get('/api/if/reports', async (req, res) => {
+  try {
+    const { startDate, endDate, classFilter, search } = req.query;
+    let conditions = ["1=1"];
+    let params = [];
+    let idx = 1;
+
+    if (startDate) {
+      conditions.push(`start_time >= $${idx}`);
+      params.push(startDate + ' 00:00:00');
+      idx++;
+    }
+    if (endDate) {
+      conditions.push(`start_time <= $${idx}`);
+      params.push(endDate + ' 23:59:59');
+      idx++;
+    }
+    if (classFilter && classFilter !== 'all') {
+      conditions.push(`LOWER(student_class) = $${idx}`);
+      params.push(classFilter.toLowerCase());
+      idx++;
+    }
+    if (search) {
+      conditions.push(`(LOWER(student_name) LIKE $${idx} OR LOWER(device_detail) LIKE $${idx} OR register_number LIKE $${idx})`);
+      params.push(`%${search.toLowerCase()}%`);
+      idx++;
+    }
+
+    const query = `
+      SELECT * FROM if_sessions 
+      WHERE ${conditions.join(' AND ')}
+      ORDER BY start_time DESC
+    `;
+    const result = await pool.query(query, params);
+    res.json(result.rows.map(mapIfSessionRow));
+  } catch (err) {
+    console.error('Error fetching IF reports:', err);
+    res.status(500).json({ error: 'Failed to fetch IF reports' });
   }
 });
 

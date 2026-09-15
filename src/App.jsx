@@ -55,7 +55,15 @@ import {
   Upload,
   UserPlus,
   Clock,
-  PhoneCall
+  PhoneCall,
+  Monitor,
+  Laptop,
+  Play,
+  Square,
+  StopCircle,
+  FileDown,
+  Filter,
+  Cpu
 } from 'lucide-react';
 
 // Initial seed data for the 8 classes with demo student names and score records
@@ -539,6 +547,7 @@ export default function App() {
     if (perm === 'user_sheet' && perms.includes('admin_sheet')) return true;
     if (perm === 'phone_pass_issue' && perms.includes('admin_phone_pass')) return true;
     if (perm === 'phone_pass' && (perms.includes('admin_phone_pass') || perms.includes('phone_pass_issue'))) return true;
+    if (perm === 'if_lab' || perm === 'if') return perms.includes('if_lab') || perms.includes('if_module');
     return false;
   };
 
@@ -2209,6 +2218,245 @@ ${selectedStudentSummaries.join('\n')}`;
   const [phoneRegStudentSearch, setPhoneRegStudentSearch] = useState('');
   const [phoneRegTypeFilter, setPhoneRegTypeFilter] = useState('school'); // 'school' | 'home'
 
+  // --- IF Computer Lab Usage State & Handlers ---
+  const [ifSessions, setIfSessions] = useState([]);
+  const [ifLoading, setIfLoading] = useState(false);
+  const [ifSubTab, setIfSubTab] = useState('active'); // 'active' | 'reports'
+  const [showIfStartModal, setShowIfStartModal] = useState(false);
+
+  // IF Session Initiation Form State (4 Steps)
+  const [ifFormClass, setIfFormClass] = useState('all');
+  const [ifFormStudentSearch, setIfFormStudentSearch] = useState('');
+  const [ifFormSelectedStudent, setIfFormSelectedStudent] = useState(null);
+  const [ifFormStudentQuota, setIfFormStudentQuota] = useState(null);
+  const [ifFormQuotaLoading, setIfFormQuotaLoading] = useState(false);
+  const [ifFormDeviceCategory, setIfFormDeviceCategory] = useState('PC'); // 'PC' | 'Laptop'
+  const [ifFormPcNumber, setIfFormPcNumber] = useState('PC-01');
+  const [ifFormLaptopOption, setIfFormLaptopOption] = useState('own'); // 'own' | 'other'
+  const [ifFormLaptopDetail, setIfFormLaptopDetail] = useState('');
+  const [ifFormAllowOverride, setIfFormAllowOverride] = useState(false);
+  const [ifFormSubmitting, setIfFormSubmitting] = useState(false);
+
+  // IF Reports & Analytics State
+  const [ifReportStartDate, setIfReportStartDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [ifReportEndDate, setIfReportEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [ifReportClassFilter, setIfReportClassFilter] = useState('all');
+  const [ifReportSearch, setIfReportSearch] = useState('');
+  const [ifReportSessions, setIfReportSessions] = useState([]);
+  const [ifReportLoading, setIfReportLoading] = useState(false);
+
+  // Ticker for live duration calculation
+  const [nowTick, setNowTick] = useState(Date.now());
+
+  useEffect(() => {
+    const timer = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(timer);
+  }, []);
+
+  const formatHoursMins = (totalSeconds) => {
+    const hours = Math.floor((totalSeconds || 0) / 3600);
+    const minutes = Math.floor(((totalSeconds || 0) % 3600) / 60);
+    return `${hours} hrs ${minutes} mins`;
+  };
+
+  const formatTimerSeconds = (totalSeconds) => {
+    const hrs = Math.floor((totalSeconds || 0) / 3600).toString().padStart(2, '0');
+    const mins = Math.floor(((totalSeconds || 0) % 3600) / 60).toString().padStart(2, '0');
+    const secs = Math.floor((totalSeconds || 0) % 60).toString().padStart(2, '0');
+    return `${hrs}:${mins}:${secs}`;
+  };
+
+  const fetchIfSessions = async () => {
+    setIfLoading(true);
+    try {
+      const res = await fetch('/api/if/sessions');
+      if (res.ok) {
+        const data = await res.json();
+        setIfSessions(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch IF sessions:', err);
+    } finally {
+      setIfLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'if_lab') {
+      fetchIfSessions();
+      const interval = setInterval(fetchIfSessions, 8000);
+      return () => clearInterval(interval);
+    }
+  }, [activeTab]);
+
+  const fetchIfQuotaForStudent = async (studentId) => {
+    if (!studentId) return;
+    setIfFormQuotaLoading(true);
+    try {
+      const res = await fetch(`/api/if/quota/${studentId}`);
+      if (res.ok) {
+        const quotaData = await res.json();
+        setIfFormStudentQuota(quotaData);
+      }
+    } catch (err) {
+      console.error('Failed to fetch quota:', err);
+    } finally {
+      setIfFormQuotaLoading(false);
+    }
+  };
+
+  const handleStartIfSession = async (e) => {
+    if (e) e.preventDefault();
+    if (!ifFormSelectedStudent) {
+      alert('Please select a student first!');
+      return;
+    }
+
+    let deviceDetail = '';
+    if (ifFormDeviceCategory === 'PC') {
+      deviceDetail = ifFormPcNumber || 'PC-01';
+    } else {
+      if (ifFormLaptopOption === 'own') {
+        deviceDetail = 'Own Laptop';
+      } else {
+        deviceDetail = ifFormLaptopDetail.trim() ? `Other: ${ifFormLaptopDetail.trim()}` : "Another's Laptop";
+      }
+    }
+
+    setIfFormSubmitting(true);
+    try {
+      const res = await fetch('/api/if/sessions/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: ifFormSelectedStudent.id,
+          studentName: ifFormSelectedStudent.name,
+          studentClass: ifFormSelectedStudent.class || '',
+          registerNumber: ifFormSelectedStudent.registerNumber || '',
+          deviceCategory: ifFormDeviceCategory,
+          deviceDetail: deviceDetail,
+          issuedBy: currentUser?.username || currentUser?.role || 'Admin',
+          allowOverride: ifFormAllowOverride
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Failed to start session');
+        return;
+      }
+
+      // Reset form & close modal
+      setShowIfStartModal(false);
+      setIfFormSelectedStudent(null);
+      setIfFormStudentSearch('');
+      setIfFormStudentQuota(null);
+      setIfFormAllowOverride(false);
+      setIfFormLaptopDetail('');
+
+      fetchIfSessions();
+    } catch (err) {
+      console.error('Error starting IF session:', err);
+      alert('Error connecting to server.');
+    } finally {
+      setIfFormSubmitting(false);
+    }
+  };
+
+  const handleEndIfSession = async (sessionId) => {
+    if (!confirm('Are you sure you want to end this IF lab session?')) return;
+    try {
+      const res = await fetch(`/api/if/sessions/${sessionId}/end`, { method: 'PUT' });
+      if (res.ok) {
+        fetchIfSessions();
+      } else {
+        const data = await res.json();
+        alert(data.error || 'Failed to end session');
+      }
+    } catch (err) {
+      console.error('Error ending session:', err);
+    }
+  };
+
+  const handleDeleteIfSession = async (sessionId) => {
+    if (!confirm('Are you sure you want to delete this session record?')) return;
+    try {
+      const res = await fetch(`/api/if/sessions/${sessionId}`, { method: 'DELETE' });
+      if (res.ok) {
+        fetchIfSessions();
+        if (ifSubTab === 'reports') fetchIfReports();
+      }
+    } catch (err) {
+      console.error('Error deleting session:', err);
+    }
+  };
+
+  const fetchIfReports = async () => {
+    setIfReportLoading(true);
+    try {
+      const queryParams = new URLSearchParams({
+        startDate: ifReportStartDate,
+        endDate: ifReportEndDate,
+        classFilter: ifReportClassFilter,
+        search: ifReportSearch
+      });
+      const res = await fetch(`/api/if/reports?${queryParams.toString()}`);
+      if (res.ok) {
+        setIfReportSessions(await res.json());
+      }
+    } catch (err) {
+      console.error('Failed to fetch IF reports:', err);
+    } finally {
+      setIfReportLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'if_lab' && ifSubTab === 'reports') {
+      fetchIfReports();
+    }
+  }, [activeTab, ifSubTab, ifReportStartDate, ifReportEndDate, ifReportClassFilter]);
+
+  const handleExportIfReportCSV = () => {
+    if (ifReportSessions.length === 0) {
+      alert('No records to export!');
+      return;
+    }
+    const headers = ['Student Name', 'Class', 'Register Number', 'Device Category', 'Device Details', 'Date', 'Start Time', 'End Time', 'Duration (HH:MM:SS)', 'Status', 'Issued By'];
+    const rows = ifReportSessions.map(s => {
+      const startDate = s.startTime ? new Date(s.startTime) : null;
+      const endDate = s.endTime ? new Date(s.endTime) : null;
+      const dateStr = startDate ? startDate.toLocaleDateString() : '';
+      const startStr = startDate ? startDate.toLocaleTimeString() : '';
+      const endStr = endDate ? endDate.toLocaleTimeString() : 'ACTIVE';
+      const durStr = formatTimerSeconds(s.durationSeconds || 0);
+
+      return [
+        `"${s.studentName}"`,
+        `"${s.studentClass}"`,
+        `"${s.registerNumber}"`,
+        `"${s.deviceCategory}"`,
+        `"${s.deviceDetail}"`,
+        `"${dateStr}"`,
+        `"${startStr}"`,
+        `"${endStr}"`,
+        `"${durStr}"`,
+        `"${s.status}"`,
+        `"${s.issuedBy}"`
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `IF_Lab_Usage_Report_${ifReportStartDate}_to_${ifReportEndDate}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
   // --- Phone Pass PDF Export State ---
   const [showPhonePassPdfModal, setShowPhonePassPdfModal] = useState(false);
   const [pdfPhoneTypeFilter, setPdfPhoneTypeFilter] = useState('school'); // 'school' | 'home'
@@ -2669,6 +2917,7 @@ ${selectedStudentSummaries.join('\n')}`;
     { key: 'phone_pass', label: 'Phone Pass View' },
     { key: 'phone_pass_issue', label: 'Issue Phone Pass' },
     { key: 'admin_phone_pass', label: 'Admin Phone Pass' },
+    { key: 'if_lab', label: 'IF Lab Usage' },
   ];
 
   const fetchUsers = async () => {
@@ -7829,6 +8078,351 @@ ${selectedStudentSummaries.join('\n')}`;
               })()}
             </div>
           </div>
+        ) : activeTab === 'if_lab' ? (
+          /* IF COMPUTER LAB TRACKING MODULE VIEW */
+          <div className="flex-1 flex flex-col overflow-hidden bg-slate-50 relative font-sans">
+            {/* Header Bar */}
+            <div className="p-4 bg-white border-b border-slate-200 flex items-center justify-between shrink-0 shadow-xs flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-cyan-600 to-blue-800 text-white flex items-center justify-center font-bold shadow-md">
+                  <Monitor className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-[#1A365D] font-extrabold text-base uppercase leading-tight">IF Computer Lab Tracker</h2>
+                    <span className="bg-cyan-100 text-cyan-800 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">Lab Session System</span>
+                  </div>
+                  <p className="text-slate-500 text-xs font-medium">PC & Laptop Live Monitoring and 10-Hour Monthly Quota</p>
+                </div>
+              </div>
+
+              {/* Sub-tab Switcher & Actions */}
+              <div className="flex items-center gap-2">
+                <div className="bg-slate-100 p-1 rounded-xl flex items-center gap-1 border border-slate-200">
+                  <button
+                    onClick={() => setIfSubTab('active')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ifSubTab === 'active' ? 'bg-[#1A365D] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    Active Sessions ({ifSessions.filter(s => s.status === 'ACTIVE').length})
+                  </button>
+                  <button
+                    onClick={() => setIfSubTab('reports')}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${ifSubTab === 'reports' ? 'bg-[#1A365D] text-white shadow-xs' : 'text-slate-600 hover:text-slate-900'}`}
+                  >
+                    Reports & Analytics
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => {
+                    setShowIfStartModal(true);
+                    setIfFormSelectedStudent(null);
+                    setIfFormStudentSearch('');
+                    setIfFormStudentQuota(null);
+                  }}
+                  className="py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-md active:scale-95 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Start New Session</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Metrics Bar */}
+            <div className="px-4 py-3 bg-white border-b border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-3 shrink-0">
+              <div className="p-3 bg-cyan-50 border border-cyan-100 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold text-cyan-700 uppercase tracking-wider">Active Sessions</p>
+                  <p className="text-xl font-black text-cyan-900">{ifSessions.filter(s => s.status === 'ACTIVE').length}</p>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-cyan-200 text-cyan-800 flex items-center justify-center font-bold">
+                  <Monitor className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold text-indigo-700 uppercase tracking-wider">PCs Occupied</p>
+                  <p className="text-xl font-black text-indigo-900">{ifSessions.filter(s => s.status === 'ACTIVE' && s.deviceCategory === 'PC').length}</p>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-indigo-200 text-indigo-800 flex items-center justify-center font-bold">
+                  <Cpu className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="p-3 bg-emerald-50 border border-emerald-100 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold text-emerald-700 uppercase tracking-wider">Laptops In Use</p>
+                  <p className="text-xl font-black text-emerald-900">{ifSessions.filter(s => s.status === 'ACTIVE' && s.deviceCategory === 'Laptop').length}</p>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-emerald-200 text-emerald-800 flex items-center justify-center font-bold">
+                  <Laptop className="w-4 h-4" />
+                </div>
+              </div>
+
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold text-amber-700 uppercase tracking-wider">Completed Today</p>
+                  <p className="text-xl font-black text-amber-900">
+                    {ifSessions.filter(s => s.status === 'COMPLETED' && s.endTime && new Date(s.endTime).toDateString() === new Date().toDateString()).length}
+                  </p>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-amber-200 text-amber-800 flex items-center justify-center font-bold">
+                  <Clock className="w-4 h-4" />
+                </div>
+              </div>
+            </div>
+
+            {/* Sub-Tab 1: Active Sessions Board */}
+            {ifSubTab === 'active' && (
+              <div className="flex-1 p-4 overflow-y-auto">
+                {ifSessions.filter(s => s.status === 'ACTIVE').length === 0 ? (
+                  <div className="bg-white rounded-2xl border-2 border-dashed border-slate-200 p-12 text-center flex flex-col items-center justify-center gap-3">
+                    <div className="w-16 h-16 rounded-full bg-slate-100 text-slate-400 flex items-center justify-center">
+                      <Monitor className="w-8 h-8" />
+                    </div>
+                    <div>
+                      <h3 className="text-slate-800 font-extrabold text-base">No Active Lab Sessions</h3>
+                      <p className="text-slate-500 text-xs mt-1">There are currently no students using PCs or laptops in the lab.</p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowIfStartModal(true);
+                        setIfFormSelectedStudent(null);
+                        setIfFormStudentSearch('');
+                        setIfFormStudentQuota(null);
+                      }}
+                      className="mt-2 py-2 px-4 bg-[#1A365D] hover:bg-[#2A4365] text-white rounded-xl text-xs font-bold flex items-center gap-2 shadow-sm"
+                    >
+                      <Plus className="w-4 h-4" />
+                      <span>Start New IF Session</span>
+                    </button>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {ifSessions.filter(s => s.status === 'ACTIVE').map(session => {
+                      const startTime = session.startTime ? new Date(session.startTime) : new Date();
+                      const elapsedSeconds = Math.max(0, Math.floor((nowTick - startTime.getTime()) / 1000));
+                      const liveTimerStr = formatTimerSeconds(elapsedSeconds);
+
+                      return (
+                        <div key={session.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all p-4 flex flex-col justify-between relative overflow-hidden">
+                          <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-emerald-400 to-cyan-500"></div>
+
+                          <div>
+                            {/* Card Header: Student & Class */}
+                            <div className="flex items-start justify-between gap-2 mb-3">
+                              <div>
+                                <h4 className="text-slate-900 font-extrabold text-sm leading-snug">{session.studentName}</h4>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="bg-slate-100 text-slate-700 text-[10px] font-bold px-2 py-0.5 rounded-md uppercase">
+                                    Class {session.studentClass}
+                                  </span>
+                                  {session.registerNumber && (
+                                    <span className="text-slate-400 text-[10px] font-mono font-semibold">
+                                      Reg #{session.registerNumber}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+
+                              <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 text-[10px] font-extrabold px-2 py-0.5 rounded-full flex items-center gap-1 animate-pulse">
+                                <span className="w-1.5 h-1.5 rounded-full bg-emerald-600"></span>
+                                LIVE
+                              </span>
+                            </div>
+
+                            {/* Device & Location */}
+                            <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                {session.deviceCategory === 'PC' ? (
+                                  <Monitor className="w-4 h-4 text-cyan-600" />
+                                ) : (
+                                  <Laptop className="w-4 h-4 text-indigo-600" />
+                                )}
+                                <div>
+                                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Device Assigned</p>
+                                  <p className="text-xs font-black text-slate-800">{session.deviceDetail}</p>
+                                </div>
+                              </div>
+                              <span className="text-[10px] font-bold text-slate-500">
+                                {session.deviceCategory}
+                              </span>
+                            </div>
+
+                            {/* Live Running Duration Counter */}
+                            <div className="p-3 bg-gradient-to-br from-[#1A365D] to-[#2A4365] text-white rounded-xl text-center shadow-inner mb-3">
+                              <p className="text-[9px] text-cyan-300 font-bold uppercase tracking-widest">Active Duration</p>
+                              <p className="text-2xl font-black font-mono tracking-wider text-emerald-400 my-0.5">
+                                {liveTimerStr}
+                              </p>
+                              <p className="text-[10px] text-slate-300 font-medium">
+                                Started: {startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* End Session Button */}
+                          <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+                            <span className="text-[10px] text-slate-400 font-medium">By: {session.issuedBy}</span>
+                            <button
+                              onClick={() => handleEndIfSession(session.id)}
+                              className="py-1.5 px-3 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1 shadow-sm active:scale-95 transition-all"
+                            >
+                              <StopCircle className="w-3.5 h-3.5" />
+                              <span>End Session</span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Sub-Tab 2: Reports & Analytics */}
+            {ifSubTab === 'reports' && (
+              <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-4">
+                {/* Reports Filter Bar */}
+                <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={ifReportStartDate}
+                        onChange={e => setIfReportStartDate(e.target.value)}
+                        className="py-1.5 px-3 border border-slate-300 rounded-xl text-xs font-bold text-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">End Date</label>
+                      <input
+                        type="date"
+                        value={ifReportEndDate}
+                        onChange={e => setIfReportEndDate(e.target.value)}
+                        className="py-1.5 px-3 border border-slate-300 rounded-xl text-xs font-bold text-slate-700"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Class Filter</label>
+                      <select
+                        value={ifReportClassFilter}
+                        onChange={e => setIfReportClassFilter(e.target.value)}
+                        className="py-1.5 px-3 border border-slate-300 rounded-xl text-xs font-bold text-slate-700 bg-white"
+                      >
+                        <option value="all">All Classes</option>
+                        {Array.from(new Set((students || []).map(s => s?.class).filter(Boolean))).sort().map(clsName => (
+                          <option key={clsName} value={clsName.toLowerCase()}>Class {clsName}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Search</label>
+                      <input
+                        type="text"
+                        placeholder="Search student or PC..."
+                        value={ifReportSearch}
+                        onChange={e => setIfReportSearch(e.target.value)}
+                        className="py-1.5 px-3 border border-slate-300 rounded-xl text-xs font-medium text-slate-700 w-44"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={fetchIfReports}
+                      className="py-2 px-3.5 bg-[#1A365D] hover:bg-[#2A4365] text-white rounded-xl text-xs font-bold flex items-center gap-1.5"
+                    >
+                      <Filter className="w-3.5 h-3.5" />
+                      <span>Filter</span>
+                    </button>
+                    <button
+                      onClick={handleExportIfReportCSV}
+                      className="py-2 px-3.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                    >
+                      <FileDown className="w-3.5 h-3.5" />
+                      <span>Export CSV / Excel</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Reports Table */}
+                <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex-1">
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-100 text-slate-600 text-[11px] uppercase tracking-wider font-extrabold border-b border-slate-200">
+                          <th className="py-3 px-4">Student Name</th>
+                          <th className="py-3 px-4">Class</th>
+                          <th className="py-3 px-4">Device Details</th>
+                          <th className="py-3 px-4">Date</th>
+                          <th className="py-3 px-4">Start Time</th>
+                          <th className="py-3 px-4">End Time</th>
+                          <th className="py-3 px-4">Duration (HH:MM:SS)</th>
+                          <th className="py-3 px-4">Issued By</th>
+                          <th className="py-3 px-4">Status</th>
+                          <th className="py-3 px-4 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 text-xs font-medium text-slate-700">
+                        {ifReportSessions.length === 0 ? (
+                          <tr>
+                            <td colSpan="10" className="py-8 text-center text-slate-400 font-bold">
+                              No session records found for the selected criteria.
+                            </td>
+                          </tr>
+                        ) : (
+                          ifReportSessions.map(s => {
+                            const startDate = s.startTime ? new Date(s.startTime) : null;
+                            const endDate = s.endTime ? new Date(s.endTime) : null;
+
+                            return (
+                              <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="py-3 px-4 font-bold text-slate-900">{s.studentName}</td>
+                                <td className="py-3 px-4 uppercase font-bold text-slate-600">{s.studentClass}</td>
+                                <td className="py-3 px-4 font-extrabold text-cyan-700">{s.deviceDetail}</td>
+                                <td className="py-3 px-4">{startDate ? startDate.toLocaleDateString() : '-'}</td>
+                                <td className="py-3 px-4">{startDate ? startDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}</td>
+                                <td className="py-3 px-4">
+                                  {s.status === 'ACTIVE' ? (
+                                    <span className="text-emerald-600 font-extrabold animate-pulse">LIVE NOW</span>
+                                  ) : (
+                                    endDate ? endDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 font-mono font-bold text-slate-900">
+                                  {formatTimerSeconds(s.durationSeconds || 0)}
+                                </td>
+                                <td className="py-3 px-4 text-slate-500">{s.issuedBy}</td>
+                                <td className="py-3 px-4">
+                                  {s.status === 'ACTIVE' ? (
+                                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">ACTIVE</span>
+                                  ) : (
+                                    <span className="bg-slate-100 text-slate-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase">COMPLETED</span>
+                                  )}
+                                </td>
+                                <td className="py-3 px-4 text-right">
+                                  <button
+                                    onClick={() => handleDeleteIfSession(s.id)}
+                                    className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg transition-colors"
+                                    title="Delete record"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
           /* SPREADSHEET VIEW (RBAC Protected) */
           <div className="flex-1 flex flex-col overflow-hidden bg-[#F8F9FA]">
@@ -8619,6 +9213,29 @@ ${selectedStudentSummaries.join('\n')}`;
                 )}
               </div>
               <span className="text-[10px] tracking-wide">Phone Pass</span>
+            </button>
+          )}
+
+          {(hasPermission('if_lab') || hasPermission('if') || isAdminAuthenticated) && (
+            <button
+              onClick={() => {
+                setActiveTab('if_lab');
+                setSaveStatus('');
+              }}
+              className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 relative ${activeTab === 'if_lab'
+                  ? 'bg-[#1A365D] text-white shadow-xs font-extrabold scale-[1.02]'
+                  : 'text-slate-500 hover:text-[#1A365D] hover:bg-slate-100 font-semibold'
+                }`}
+            >
+              <div className="relative">
+                <Monitor className={`w-4 h-4 ${activeTab === 'if_lab' ? 'text-cyan-300' : ''}`} />
+                {ifSessions.filter(s => s.status === 'ACTIVE').length > 0 && (
+                  <span className="absolute -top-1.5 -right-2.5 bg-emerald-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-pulse">
+                    {ifSessions.filter(s => s.status === 'ACTIVE').length}
+                  </span>
+                )}
+              </div>
+              <span className="text-[10px] tracking-wide">IF</span>
             </button>
           )}
 
@@ -12602,6 +13219,287 @@ ${selectedStudentSummaries.join('\n')}`;
                   </div>
                 );
               })()}
+            </div>
+          </div>
+        )}
+
+        {/* IF Lab Session Initiation Modal (4 Steps Workflow) */}
+        {showIfStartModal && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
+            <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
+              {/* Modal Header */}
+              <div className="p-4 bg-[#1A365D] text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300">
+                    <Monitor className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-sm uppercase">Start IF Lab Session</h3>
+                    <p className="text-cyan-200/80 text-[11px]">4-Step Device Assignment & Monthly Quota Check</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowIfStartModal(false)}
+                  className="p-1.5 text-slate-300 hover:text-white hover:bg-white/10 rounded-xl transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-5 overflow-y-auto space-y-5 text-sm">
+                {/* Step 1: Select Class */}
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Step 1: Filter Student by Class
+                  </label>
+                  <select
+                    value={ifFormClass}
+                    onChange={e => {
+                      setIfFormClass(e.target.value);
+                      setIfFormSelectedStudent(null);
+                      setIfFormStudentSearch('');
+                      setIfFormStudentQuota(null);
+                    }}
+                    className="w-full py-2.5 px-3 bg-slate-50 border border-slate-300 rounded-xl text-xs font-bold text-slate-800 focus:ring-2 focus:ring-cyan-500"
+                  >
+                    <option value="all">All Classes</option>
+                    {Array.from(new Set((students || []).map(s => s?.class).filter(Boolean))).sort().map(clsName => (
+                      <option key={clsName} value={clsName.toLowerCase()}>Class {clsName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Step 2: Student Auto-Suggest Search */}
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Step 2: Search & Select Student
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      placeholder="Type student name or reg no (e.g. Ahmad)..."
+                      value={ifFormStudentSearch}
+                      onChange={e => {
+                        setIfFormStudentSearch(e.target.value);
+                        setIfFormSelectedStudent(null);
+                        setIfFormStudentQuota(null);
+                      }}
+                      className="w-full py-2.5 px-3 pl-9 border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-cyan-500"
+                    />
+                    <Search className="w-4 h-4 text-slate-400 absolute left-3 top-3" />
+                  </div>
+
+                  {/* Auto-suggest dropdown results */}
+                  {!ifFormSelectedStudent && ifFormStudentSearch.trim() !== '' && (
+                    <div className="mt-2 bg-white border border-slate-200 rounded-xl shadow-lg max-h-40 overflow-y-auto divide-y divide-slate-100 z-10">
+                      {(students || [])
+                        .filter(s => {
+                          if (!s || !s.name) return false;
+                          if (ifFormClass !== 'all' && (s.class || '').toLowerCase() !== ifFormClass.toLowerCase()) return false;
+                          const q = (ifFormStudentSearch || '').toLowerCase();
+                          return (
+                            s.name.toLowerCase().includes(q) ||
+                            (s.registerNumber && s.registerNumber.toString().toLowerCase().includes(q))
+                          );
+                        })
+                        .slice(0, 15)
+                        .map(st => (
+                          <div
+                            key={st.id || st.name}
+                            onClick={() => {
+                              setIfFormSelectedStudent(st);
+                              setIfFormStudentSearch(`${st.name} (Class ${st.class || 'N/A'})`);
+                              fetchIfQuotaForStudent(st.id);
+                            }}
+                            className="p-2.5 hover:bg-cyan-50 cursor-pointer flex items-center justify-between transition-colors"
+                          >
+                            <div>
+                              <p className="font-bold text-slate-900 text-xs">{st.name}</p>
+                              <p className="text-[10px] text-slate-500">Reg #{st.registerNumber || st.id}</p>
+                            </div>
+                            <span className="bg-slate-100 text-slate-700 text-[10px] font-extrabold px-2 py-0.5 rounded-md uppercase">
+                              Class {st.class || 'N/A'}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
+                  )}
+
+                  {/* Selected Student Quota Card */}
+                  {ifFormSelectedStudent && (
+                    <div className="mt-3 p-3.5 bg-gradient-to-br from-slate-900 to-[#1A365D] text-white rounded-2xl shadow-md border border-cyan-500/30">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs font-black text-cyan-300 uppercase">{ifFormSelectedStudent.name}</p>
+                          <p className="text-[10px] text-slate-300">Class {ifFormSelectedStudent.class} | Reg #{ifFormSelectedStudent.registerNumber || ifFormSelectedStudent.id}</p>
+                        </div>
+                        <span className="bg-cyan-400/20 border border-cyan-400/40 text-cyan-200 text-[10px] font-extrabold px-2 py-0.5 rounded-full">
+                          10 Hr Monthly Quota
+                        </span>
+                      </div>
+
+                      {ifFormQuotaLoading ? (
+                        <p className="text-xs text-slate-300 mt-2 animate-pulse">Calculating monthly usage...</p>
+                      ) : ifFormStudentQuota ? (
+                        <div className="mt-2.5 pt-2.5 border-t border-white/10">
+                          <div className="flex justify-between text-[11px] font-bold mb-1">
+                            <span>Used: {formatHoursMins(ifFormStudentQuota.usedSeconds)}</span>
+                            <span>Remaining: {formatHoursMins(ifFormStudentQuota.remainingSeconds)}</span>
+                          </div>
+
+                          {/* Progress Bar */}
+                          <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full transition-all duration-300 ${ifFormStudentQuota.isLimitExceeded ? 'bg-rose-500' : 'bg-emerald-400'}`}
+                              style={{ width: `${Math.min(100, (ifFormStudentQuota.usedSeconds / ifFormStudentQuota.maxMonthlySeconds) * 100)}%` }}
+                            ></div>
+                          </div>
+
+                          {/* Limit Exceeded Alert */}
+                          {ifFormStudentQuota.isLimitExceeded && (
+                            <div className="mt-3 p-2.5 bg-rose-500/20 border border-rose-400/40 rounded-xl text-rose-200 text-xs">
+                              <p className="font-extrabold flex items-center gap-1">
+                                <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                                Monthly 10-Hour Limit Reached!
+                              </p>
+                              <p className="text-[10px] mt-0.5 text-rose-200/90">
+                                This student has used 10 hours this month.
+                              </p>
+
+                              <label className="mt-2 flex items-center gap-2 cursor-pointer font-bold text-[11px] text-white">
+                                <input
+                                  type="checkbox"
+                                  checked={ifFormAllowOverride}
+                                  onChange={e => setIfFormAllowOverride(e.target.checked)}
+                                  className="w-4 h-4 rounded text-cyan-600 accent-cyan-500"
+                                />
+                                <span>Admin Override (Allow session creation)</span>
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+
+                {/* Step 3: Device Type Selection */}
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-700 uppercase tracking-wider mb-1.5">
+                    Step 3: Device Type Selection
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3 mb-3">
+                    <button
+                      type="button"
+                      onClick={() => setIfFormDeviceCategory('PC')}
+                      className={`py-3 px-3 rounded-2xl border font-black text-xs flex items-center justify-center gap-2 transition-all ${ifFormDeviceCategory === 'PC'
+                        ? 'bg-cyan-600 text-white border-cyan-600 shadow-md'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}
+                    >
+                      <Monitor className="w-4 h-4" />
+                      <span>Desktop PC</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setIfFormDeviceCategory('Laptop')}
+                      className={`py-3 px-3 rounded-2xl border font-black text-xs flex items-center justify-center gap-2 transition-all ${ifFormDeviceCategory === 'Laptop'
+                        ? 'bg-indigo-600 text-white border-indigo-600 shadow-md'
+                        : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'}`}
+                    >
+                      <Laptop className="w-4 h-4" />
+                      <span>Laptop</span>
+                    </button>
+                  </div>
+
+                  {/* Sub Options for PC */}
+                  {ifFormDeviceCategory === 'PC' && (
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200">
+                      <label className="block text-[11px] font-bold text-slate-600 mb-1">Select PC Number:</label>
+                      <select
+                        value={ifFormPcNumber}
+                        onChange={e => setIfFormPcNumber(e.target.value)}
+                        className="w-full py-2 px-3 bg-white border border-slate-300 rounded-xl text-xs font-bold text-slate-800"
+                      >
+                        {Array.from({ length: 21 }, (_, i) => {
+                          const pcCode = `PC-${(i + 1).toString().padStart(2, '0')}`;
+                          const isOccupied = ifSessions.some(s => s.status === 'ACTIVE' && s.deviceDetail === pcCode);
+                          return (
+                            <option key={pcCode} value={pcCode} disabled={isOccupied}>
+                              {pcCode} {isOccupied ? '(Occupied)' : '(Available)'}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Sub Options for Laptop */}
+                  {ifFormDeviceCategory === 'Laptop' && (
+                    <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200 space-y-2.5">
+                      <label className="block text-[11px] font-bold text-slate-600">Laptop Ownership:</label>
+                      <div className="flex items-center gap-4 text-xs font-bold text-slate-800">
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="laptopOpt"
+                            value="own"
+                            checked={ifFormLaptopOption === 'own'}
+                            onChange={() => setIfFormLaptopOption('own')}
+                            className="accent-indigo-600"
+                          />
+                          <span>Own Laptop</span>
+                        </label>
+                        <label className="flex items-center gap-1.5 cursor-pointer">
+                          <input
+                            type="radio"
+                            name="laptopOpt"
+                            value="other"
+                            checked={ifFormLaptopOption === 'other'}
+                            onChange={() => setIfFormLaptopOption('other')}
+                            className="accent-indigo-600"
+                          />
+                          <span>Another's Laptop</span>
+                        </label>
+                      </div>
+
+                      {ifFormLaptopOption === 'other' && (
+                        <div>
+                          <input
+                            type="text"
+                            placeholder="Enter owner name / laptop model..."
+                            value={ifFormLaptopDetail}
+                            onChange={e => setIfFormLaptopDetail(e.target.value)}
+                            className="w-full py-2 px-3 border border-slate-300 rounded-xl text-xs font-medium"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowIfStartModal(false)}
+                  className="py-2.5 px-4 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-extrabold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleStartIfSession}
+                  disabled={ifFormSubmitting || !ifFormSelectedStudent || (ifFormStudentQuota?.isLimitExceeded && !ifFormAllowOverride)}
+                  className="py-2.5 px-5 bg-[#1A365D] hover:bg-[#2A4365] disabled:bg-slate-300 text-white rounded-xl text-xs font-extrabold shadow-md active:scale-95 transition-all flex items-center gap-1.5"
+                >
+                  <Play className="w-4 h-4 fill-current" />
+                  <span>{ifFormSubmitting ? 'Starting Session...' : 'Start Session'}</span>
+                </button>
+              </div>
             </div>
           </div>
         )}
