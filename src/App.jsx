@@ -2349,37 +2349,16 @@ ${selectedStudentSummaries.join('\n')}`;
       doc.text(`CLASS: ${cls.toUpperCase()} (${classStudents.length} Students)`, 14, startY);
       startY += 4;
 
-      // Table Data
+      // Table Data (Clean Blank Registry for OUT, REASON, IN)
       const tableRows = classStudents.map((student) => {
-        const activePass = phonePasses.find(p => (p.student_id === student.id || p.student_name === student.name) && p.status === 'OUT');
-        const latestPass = activePass || phonePasses.find(p => p.student_id === student.id || p.student_name === student.name);
-
-        let outCol = '';
-        let reasonCol = '';
-        let inCol = '';
-
-        if (activePass) {
-          outCol = 'OUT';
-          reasonCol = activePass.reason || 'Phone Pass';
-          inCol = '';
-        } else if (latestPass && latestPass.status === 'RETURNED') {
-          outCol = '';
-          reasonCol = latestPass.reason || '';
-          inCol = 'IN';
-        } else {
-          outCol = '';
-          reasonCol = '';
-          inCol = '';
-        }
-
         const phoneModelStr = (student.phoneModel || student.phone_model || 'N/A').toUpperCase();
 
         return [
           student.name.toUpperCase(),
           phoneModelStr,
-          outCol,
-          reasonCol.toUpperCase(),
-          inCol
+          '',
+          '',
+          ''
         ];
       });
 
