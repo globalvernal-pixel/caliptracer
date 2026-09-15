@@ -1,0 +1,505 @@
+=== PHONE REGISTER EXCEL vs DATABASE MISMATCH REPORT ===
+Generated: 15/9/2026, 3:09:59 pm
+
+--- EXCEL DATA SUMMARY ---
+Total entries in Excel: 333
+Pending: 186
+Verified: 146
+
+--- DATABASE SUMMARY ---
+Total students in Database: 377
+
+=== [A] EXCEL ENTRIES NOT FOUND IN DATABASE ===
+(Students in Excel register but missing from DB - either by reg number or name)
+
+  Total: 15 students
+  #    | Excel Row  | Reg No     | Excel Name                               | Status
+  -------------------------------------------------------------------------------------
+  1    | Row 3      |            | Name                                     | Status
+  2    | Row 145    | 26751      | AALIYA MARYAM                            | Pending
+  3    | Row 148    | 26756      | AMINA A.M                                | Verified
+  4    | Row 150    | 26773      | ASBIN JAHAN E JAHAN                      | Pending
+  5    | Row 151    | 26737      | AYISHA HANNAKOTTU PURATH                 | Pending
+  6    | Row 191    | 26879      | MUHAMMED SHAN N                          | Pending
+  7    | Row 202    | 26939      | MUHAMMED ZAYAN V S                       | Pending
+  8    | Row 316    | 26772      | AYISHA LAMIA                             | Pending
+  9    | Row 317    | 26743      | AYISHA LAYINA OTTAPPOKIL                 | Pending
+  10   | Row 324    | 26745      | HIBAFATHIMA                              | Pending
+  11   | Row 327    | 26907      | MINHA SEHABIN TK                         | Pending
+  12   | Row 328    | 26742      | NAHA FILZ C F                            | Pending
+  13   | Row 331    | 26932      | RIYAFATHIMA P                            | Pending
+  14   | Row 332    | 26735      | SHAZA VN                                 | Pending
+  15   | Row 335    | 26931      | ZABAFATHIMA                              | Pending
+
+=== [B] DATABASE STUDENTS NOT FOUND IN EXCEL REGISTER ===
+(Students in DB but not in the physical phone register)
+
+  Total: 52 students
+  #    | DB ID                               | Reg No     | Class    | DB Name                                 
+  ----------------------------------------------------------------------------------------------------
+  1    | c1a-2-1785606089000                 | N/A        | c1a      | AALIYA MARIYAM
+  2    | tes2-1786165720196                  | N/A        | tes2     | adfff
+  3    | st-1786672348783-345                | N/A        | C1C      | ADHIL HANAN
+  4    | st-1789276119584-337                | N/A        | S2B      | AMEEN PV
+  5    | c1a-5-1785606089000                 | N/A        | c1a      | AMINA AM
+  6    | c1a-7-1785606089000                 | N/A        | c1a      | ASBIN JAHAN E
+  7    | tes2-1786165709940                  | N/A        | tes2     | asdfffggg
+  8    | st-1786467299757-129                | N/A        | C1B      | AYAZ JABIR
+  9    | c1a-8-1785606089000                 | N/A        | c1a      | AYISHA HANNA
+  10   | s1a-3-1785605798786                 | N/A        | s1a      | AYISHA LAMIA MK
+  11   | s1a-4-1785605798786                 | N/A        | s1a      | AYISHA LAYINA OP
+  12   | st-1786382460140-25                 | N/A        | C1C      | AZAAN MAHWISH
+  13   | st-1788840738938-127                | N/A        | S2B      | DILHAQ HASSAN
+  14   | test-1786165630266                  | N/A        | test     | edef
+  15   | c1c-7-1785605946219                 | N/A        | c1c      | FADHI ANWER BASHEER
+  16   | c1a-13-1785606089000                | N/A        | c1a      | FAIHA ZAREEN
+  17   | st-1789275923536-589                | N/A        | C1C      | HANIN AHMED FIZIN
+  18   | s1a-11-1785605798786                | N/A        | s1a      | HIBA FATHIMA
+  19   | s2b-7-1785606373193                 | N/A        | s2b      | LABEEB NOUSHAD
+  20   | s1a-14-1785605798786                | N/A        | s1a      | MINHA SHEHBIN TK
+  21   | st-1788196932756-485                | N/A        | C1B      | MOHAMMED HANEEN NH
+  22   | st-1786501561092-42                 | N/A        | C1B      | MUADDAB KODAMBI
+  23   | st-1786467249846-870                | 25935      | C1C      | MUHAMMED AMEEN ASHFAQ
+  24   | st-1788840738956-483                | N/A        | C2B      | MUHAMMED FADHIL RN
+  25   | c1b-28-1785606211302                | N/A        | c1b      | MUHAMMED HASHIM PUTHIYOTHIL
+  26   | st-1788840738942-96                 | N/A        | S2B      | MUHAMMED IMRAN
+  27   | st-1788671386412-523                | N/A        | C2C      | MUHAMMED MINHAI PC
+  28   | st-1786466972812-107                | N/A        | C1C      | MUHAMMED MUNAZIR
+  29   | c2c-26-1785605502891                | N/A        | c2c      | MUHAMMED RAZIL P
+  30   | c1c-30-1785605946219                | N/A        | c1c      | MUHAMMED RIYAN KOOVAN VALAPPIL
+  31   | st-1788196932757-113                | N/A        | C1C      | MUHAMMED RIYAN KV
+  32   | w-a08-4                             | N/A        | C2B      | MUHAMMED SINAN K CHEKIAD
+  33   | st-1788671386400-256                | N/A        | S2B      | MUHAMMED SWALAH
+  34   | c1b-34-1785606211302                | 25805      | c1b      | MUHAMMED YASEEN M P
+  35   | st-1786382257718-854                | N/A        | C1C      | MUHAMMED YOUNUS
+  36   | st-1788840738961-30                 | N/A        | C2B      | MUHAMMED YOUSUF
+  37   | s1b-1786339304709                   | N/A        | s1b      | MUHAMMED ZAYAN VS
+  38   | st-1786467299759-908                | N/A        | C1C      | MUHAMMMED FAAZ
+  39   | s1a-15-1785605798786                | N/A        | s1a      | NAHA FILZ CF
+  40   | c1a-30-1785606089000                | 26         | c1a      | NASHWA ZAINAB
+  41   | st-1789147930634-94                 | N/A        | C1C      | RAFAN MUHAMMED
+  42   | st-1786466643757-607                | N/A        | C1C      | RAMIN MUHAMMED
+  43   | st-1786773557469-316                | N/A        | C1C      | REHAN MUHAMMED SAHIR
+  44   | st-1788840738907-324                | N/A        | S2B      | REYHAN ANEES
+  45   | st-1786468076573-951                | N/A        | C1C      | SAHL ABDULLA
+  46   | st-1787023995508-303                | N/A        | C1B      | SAVAD M
+  47   | s1a-19-1785605798786                | N/A        | s1a      | SHAZA V N
+  48   | test-1785802464749                  | N/A        | test     | Test 1
+  49   | test-1785802487304                  | N/A        | test     | Test 2
+  50   | test-1785802474909                  | N/A        | test     | Test 4
+  51   | c2a-27-1785606720889                | 25612      | c2a      | ZAIMA ZAKIR
+  52   | st-1786382335189-842                | N/A        | C1C      | ZUNNOON P
+
+=== [C] NAME MISMATCH - SAME REG NUMBER, DIFFERENT NAME ===
+(Same register number exists in both places but names are different)
+
+  Total: 97 mismatches
+
+  1. Reg No: 26783 | Class: jr9
+     Excel Name : "MIDLAJ T P" [Verified]
+     DB Name    : "IMAN MUHAMMAD P T" (ID: jr9-8-1785695131864)
+
+  2. Reg No: 26787 | Class: jr8
+     Excel Name : "SHAFIN MUHAMMED" [Pending]
+     DB Name    : "SHAFIN MUHAMMED SHAMSUDDHEEN" (ID: jr8-15-1785755720712)
+
+  3. Reg No: 26797 | Class: jr8
+     Excel Name : "MISBAH ABDULLAH SAFIYA" [Verified]
+     DB Name    : "MISBAH ABDULLAH SAFIYA ABDULLAKUTTY" (ID: jr8-8-1785755720712)
+
+  4. Reg No: 25592 | Class: c2a
+     Excel Name : "FATHIMASANA MV" [Pending]
+     DB Name    : "FATHIMA SANA MV" (ID: c2a-5-1785606720889)
+
+  5. Reg No: 25644 | Class: s1b
+     Excel Name : "FADL AHMED ZULFIQAR ALI" [Pending]
+     DB Name    : "AHMED WAFIN K" (ID: s1b-8-1785605518822)
+
+  6. Reg No: 25661 | Class: c2b
+     Excel Name : "MUHAMMAD SINAN K" [Pending]
+     DB Name    : "MUHAMMAD SINAN K CHEKKIAD" (ID: c2b-12-1785643730074)
+
+  7. Reg No: 25663 | Class: c2b
+     Excel Name : "MUHAMMAD CP" [Pending]
+     DB Name    : "MUHAMMED CP" (ID: c2b-13-1785643730074)
+
+  8. Reg No: 25664 | Class: c2b
+     Excel Name : "MUHAMMAD FADHI RN" [Verified]
+     DB Name    : "MUHAMMED FADHI RN" (ID: c2b-14-1785643730074)
+
+  9. Reg No: 25665 | Class: c2b
+     Excel Name : "MUHAMMAD FARHAN" [Pending]
+     DB Name    : "MUHAMMED FARHAN" (ID: c2b-15-1785643730074)
+
+  10. Reg No: 25668 | Class: c2b
+     Excel Name : "MUHAMMAD JASWIN KP" [Verified]
+     DB Name    : "MUHAMMED JASWIN KP" (ID: c2b-18-1785643730074)
+
+  11. Reg No: 25669 | Class: c2b
+     Excel Name : "MUHAMMAD JISAL" [Verified]
+     DB Name    : "MUHAMMED JISAL" (ID: c2b-19-1785643730074)
+
+  12. Reg No: 26855 | Class: c1a
+     Excel Name : "ABDUL SAMAD CA" [Pending]
+     DB Name    : "KHADEEJA ABDUL LATHIEF" (ID: c1a-26-1785606089000)
+
+  13. Reg No: 26855 | Class: c1c
+     Excel Name : "ABDUL SAMAD CA" [Pending]
+     DB Name    : "MUHAMMED RASAL" (ID: c1c-28-1785605946219)
+
+  14. Reg No: 26809 | Class: c1b
+     Excel Name : "AZMI MUHAMMED ASLAM" [Verified]
+     DB Name    : "SHAMMAS ASLAM" (ID: c1b-38-1785606211302)
+
+  15. Reg No: 26860 | Class: C1C
+     Excel Name : "FADHI ANWAR BASHEER" [Verified]
+     DB Name    : "FADHIL ANWAR BASHEER" (ID: st-1786382226255-743)
+
+  16. Reg No: 26918 | Class: c1c
+     Excel Name : "HANIN AHMMED FIZIN P" [Pending]
+     DB Name    : "HANIN AHMMED FIZIN" (ID: c1c-10-1785605946219)
+
+  17. Reg No: 26920 | Class: s1b
+     Excel Name : "MOHAMMED EASA" [Pending]
+     DB Name    : "MOHAMMED NIHAL KPp" (ID: s1b-22-1785605518822)
+
+  18. Reg No: 26850 | Class: c1c
+     Excel Name : "MUHAMMAD YASEEN V" [Verified]
+     DB Name    : "MUHAMMAD YASEEN" (ID: c1c-16-1785605946219)
+
+  19. Reg No: 26854 | Class: c1c
+     Excel Name : "MUHAMMAD ABAAN.V" [Verified]
+     DB Name    : "MUHAMMED ABAAN.V" (ID: c1c-17-1785605946219)
+
+  20. Reg No: 26922 | Class: c1c
+     Excel Name : "MUHAMMAD AFLAH" [Verified]
+     DB Name    : "MUHAMMED AFLAH" (ID: c1c-18-1785605946219)
+
+  21. Reg No: 26922 | Class: jr9
+     Excel Name : "MUHAMMAD AFLAH" [Verified]
+     DB Name    : "Muhammed Zishan Shanif" (ID: jr9-1786002131871)
+
+  22. Reg No: 26829 | Class: c1c
+     Excel Name : "MUHAMMAD AMAN P" [Pending]
+     DB Name    : "MUHAMMED AMAN P" (ID: c1c-19-1785605946219)
+
+  23. Reg No: 26829 | Class: C1B
+     Excel Name : "MUHAMMAD AMAN P" [Pending]
+     DB Name    : "MUHAMMED RASEEM" (ID: st-1786382460141-480)
+
+  24. Reg No: 26871 | Class: s1b
+     Excel Name : "ABDUL HADHI S.S" [Verified]
+     DB Name    : "ABDULHADHI S.S" (ID: s1b-2-1785605518822)
+
+  25. Reg No: 26891 | Class: s1b
+     Excel Name : "ADEEB SULAIMAN C A" [Verified]
+     DB Name    : "ADEEB SULAIMAN" (ID: s1b-4-1785605518822)
+
+  26. Reg No: 26901 | Class: s1b
+     Excel Name : "AHMED SAHL SAJID" [Verified]
+     DB Name    : "AHAMMED SAHL SAJID" (ID: s1b-6-1785605518822)
+
+  27. Reg No: 26870 | Class: c2c
+     Excel Name : "AHMED WAFIN K" [Pending]
+     DB Name    : "AZEEM AHAMMED YOGI MADATHIL" (ID: c2c-8-1785605502891)
+
+  28. Reg No: 26883 | Class: c1b
+     Excel Name : "ALAN BACKER K P" [Verified]
+     DB Name    : "ALAN BACKER KP" (ID: s1b-9-1785605518822)
+
+  29. Reg No: 26877 | Class: s1b
+     Excel Name : "FAAZ MUHAMMAD K" [Verified]
+     DB Name    : "FAAZ MUHAMMAD" (ID: s1b-13-1785605518822)
+
+  30. Reg No: 26873 | Class: s1b
+     Excel Name : "HANI MUAAD P C" [Verified]
+     DB Name    : "HAANI MUAAD" (ID: s1b-15-1785605518822)
+
+  31. Reg No: 26893 | Class: s1b
+     Excel Name : "HADI MUHAMMAD E P" [Verified]
+     DB Name    : "HADI MUHAMMED E P" (ID: s1b-17-1785605518822)
+
+  32. Reg No: 26887 | Class: s1b
+     Excel Name : "MOHAMMED AJMAL K A" [Pending]
+     DB Name    : "MOHAMMED AJMAL" (ID: s1b-20-1785605518822)
+
+  33. Reg No: 26908 | Class: c1a
+     Excel Name : "HESSA FATHIMA K V K" [Verified]
+     DB Name    : "HESSA FATHIMA KVK" (ID: c1a-21-1785606089000)
+
+  34. Reg No: 26750 | Class: c1a
+     Excel Name : "HIBA FATHIMATV" [Pending]
+     DB Name    : "HIBA FATHIMA TV" (ID: c1a-22-1785606089000)
+
+  35. Reg No: 26910 | Class: c1a
+     Excel Name : "INSHAHFATHIMA" [Pending]
+     DB Name    : "INSHAH FATHIMA" (ID: c1a-24-1785606089000)
+
+  36. Reg No: 26910 | Class: s1a
+     Excel Name : "INSHAHFATHIMA" [Pending]
+     DB Name    : "NAIZA FATHIMA C" (ID: s1a-16-1785605798786)
+
+  37. Reg No: 26776 | Class: c1a
+     Excel Name : "KHADEEJATHUL SHAHARAN BEEVI" [Pending]
+     DB Name    : "KHADEEJATHUL SHAHARBAN BEEVI" (ID: c1a-27-1785606089000)
+
+  38. Reg No: 26771 | Class: s1a
+     Excel Name : "SANA FATHIMA.K" [Pending]
+     DB Name    : "ZABA FATHIMA M" (ID: s1a-22-1785605798786)
+
+  39. Reg No: 26760 | Class: c2a
+     Excel Name : "SIBA FATHIMA" [Pending]
+     DB Name    : "FATHIMA ZOYA" (ID: c2a-6-1785606720889)
+
+  40. Reg No: 26744 | Class: c1a
+     Excel Name : "AYISHA ISMA M" [Pending]
+     DB Name    : "AYISHA ISMA" (ID: c1a-10-1785606089000)
+
+  41. Reg No: 26769 | Class: c1a
+     Excel Name : "AYISHA LIYANA BINSHAD" [Verified]
+     DB Name    : "AYISHA LIYANA BINSHAD P" (ID: c1a-11-1785606089000)
+
+  42. Reg No: 26733 | Class: c1a
+     Excel Name : "FATHIMA AFSHEENKARI" [Verified]
+     DB Name    : "FATHIMA AFSHEEN KARI" (ID: c1a-14-1785606089000)
+
+  43. Reg No: 26909 | Class: c1a
+     Excel Name : "FATHIMA B Y" [Verified]
+     DB Name    : "FATHIMA BY" (ID: c1a-15-1785606089000)
+
+  44. Reg No: 26840 | Class: c1b
+     Excel Name : "AHMAD MUNEER A" [Verified]
+     DB Name    : "AHMAD MUNEER" (ID: c1b-5-1785606211302)
+
+  45. Reg No: 26818 | Class: c1b
+     Excel Name : "ALI MIYAN E" [Pending]
+     DB Name    : "ALI MIYANE" (ID: c1b-6-1785606211302)
+
+  46. Reg No: 26924 | Class: c1b
+     Excel Name : "AMAN ABDULLA K T" [Pending]
+     DB Name    : "AMAN ABDULLA KT" (ID: c1b-7-1785606211302)
+
+  47. Reg No: 26846 | Class: c1b
+     Excel Name : "AYAZ MUHAMMAD" [Verified]
+     DB Name    : "AYAZ MUHAMMED" (ID: c1b-10-1785606211302)
+
+  48. Reg No: 26831 | Class: c1b
+     Excel Name : "FAHEEM MOHAMMED" [Pending]
+     DB Name    : "FAHEEM MOHAMMED MOHAMMED SHAFI" (ID: c1b-12-1785606211302)
+
+  49. Reg No: 26842 | Class: c1c
+     Excel Name : "HIZAN BIN MUHAMMED AFT" [Verified]
+     DB Name    : "HIZAN BIN MUHAMMED AFTHAB" (ID: c1b-15-1785606211302)
+
+  50. Reg No: 26851 | Class: C1C
+     Excel Name : "IMRAN K" [Pending]
+     DB Name    : "MUHAMMED HASHIM" (ID: st-1786468188752-567)
+
+  51. Reg No: 26857 | Class: c1b
+     Excel Name : "MUADDAB KODAMBI ABDUL" [Verified]
+     DB Name    : "MUADDAB  KODAMBI ABDUL JALEEL" (ID: c1b-21-1785606211302)
+
+  52. Reg No: 26906 | Class: s1b
+     Excel Name : "MUHAMMED ATHIQ ANZAD" [Pending]
+     DB Name    : "MUHAMMED ATHIQ" (ID: s1b-23-1785605518822)
+
+  53. Reg No: 26895 | Class: s1b
+     Excel Name : "FAIHAN FIROZ" [Pending]
+     DB Name    : "MUHAMMED FAIHAN FIROZ" (ID: s1b-25-1785605518822)
+
+  54. Reg No: 26912 | Class: jr8
+     Excel Name : "MUHAMMED MUJTHABA" [Verified]
+     DB Name    : "MOHAMMED REHAN S" (ID: jr8-10-1785755720712)
+
+  55. Reg No: 26894 | Class: s1b
+     Excel Name : "MUHAMMED SHAMMAS K M" [Verified]
+     DB Name    : "MUHAMMED SHAMMAS KM" (ID: s1b-31-1785605518822)
+
+  56. Reg No: 26889 | Class: s1b
+     Excel Name : "RAZIN MUHAMMED M" [Verified]
+     DB Name    : "RAZIN MUHAMMED" (ID: s1b-37-1785605518822)
+
+  57. Reg No: 26865 | Class: s1b
+     Excel Name : "MHD FANI KUDUVILL" [Verified]
+     DB Name    : "MOHAMMED FADI KT" (ID: s1b-21-1785605518822)
+
+  58. Reg No: 26838 | Class: c1b
+     Excel Name : "MUHAMMED HAMMAZ P P" [Pending]
+     DB Name    : "MUHAMMED HAMMAZ" (ID: c1b-26-1785606211302)
+
+  59. Reg No: 26851 | Class: c1b
+     Excel Name : "MUHAMMED HASHIM P" [Pending]
+     DB Name    : "IMRAN K" (ID: c1b-18-1785606211302)
+
+  60. Reg No: 26851 | Class: C1C
+     Excel Name : "MUHAMMED HASHIM P" [Pending]
+     DB Name    : "MUHAMMED HASHIM" (ID: st-1786468188752-567)
+
+  61. Reg No: 26832 | Class: c1b
+     Excel Name : "MUHAMMED NIHAL B" [Pending]
+     DB Name    : "MUHAMMED NIHAL BARIKKAL" (ID: c1b-30-1785606211302)
+
+  62. Reg No: 26832 | Class: s1a
+     Excel Name : "MUHAMMED NIHAL B" [Pending]
+     DB Name    : "RIYA FATHIMA P" (ID: s1a-18-1785605798786)
+
+  63. Reg No: 26811 | Class: C1B
+     Excel Name : "MUHAMMED SIDHAN V P" [Verified]
+     DB Name    : "MUHAMMED SIDHAN VP" (ID: st-1786382460142-933)
+
+  64. Reg No: 26848 | Class: C1B
+     Excel Name : "RAFAN MOHAMMED E" [Verified]
+     DB Name    : "FAAZ MUHAMMED PS" (ID: st-1786382335188-198)
+
+  65. Reg No: 26848 | Class: c1c
+     Excel Name : "RAFAN MOHAMMED E" [Verified]
+     DB Name    : "MUHAMMED RAFAN M" (ID: c1c-27-1785605946219)
+
+  66. Reg No: 26848 | Class: c1b
+     Excel Name : "RAFAN MOHAMMED E" [Verified]
+     DB Name    : "RAFAN MOHAMMED" (ID: c1b-37-1785606211302)
+
+  67. Reg No: 26847 | Class: c1b
+     Excel Name : "SHEZIN HAMDAN K K" [Verified]
+     DB Name    : "SHEZIN HAMDAN" (ID: c1b-40-1785606211302)
+
+  68. Reg No: 26935 | Class: c1c
+     Excel Name : "MUHAMMED AMEEN AL ASHFAQ" [Pending]
+     DB Name    : "MUHAMMED AMEEN AL ASHFAQ THENANGAL" (ID: c1c-20-1785605946219)
+
+  69. Reg No: 26823 | Class: C1C
+     Excel Name : "MUHAMMED ATHIF A S" [Verified]
+     DB Name    : "MUHAMMED ATHIF" (ID: st-1786468123641-78)
+
+  70. Reg No: 26875 | Class: c1c
+     Excel Name : "MUHAMMED HADHI K" [Verified]
+     DB Name    : "MUHAMMED HADHI" (ID: c1c-23-1785605946219)
+
+  71. Reg No: 26919 | Class: c1c
+     Excel Name : "MUHAMMED MISHAL K" [Verified]
+     DB Name    : "MUHAMMED MISHAL" (ID: c1c-24-1785605946219)
+
+  72. Reg No: 26848 | Class: C1B
+     Excel Name : "MUHAMMED RAFAN MM" [Verified]
+     DB Name    : "FAAZ MUHAMMED PS" (ID: st-1786382335188-198)
+
+  73. Reg No: 26848 | Class: c1c
+     Excel Name : "MUHAMMED RAFAN MM" [Verified]
+     DB Name    : "MUHAMMED RAFAN M" (ID: c1c-27-1785605946219)
+
+  74. Reg No: 26848 | Class: c1b
+     Excel Name : "MUHAMMED RAFAN MM" [Verified]
+     DB Name    : "RAFAN MOHAMMED" (ID: c1b-37-1785606211302)
+
+  75. Reg No: 26814 | Class: S2B
+     Excel Name : "MUHAMMED RASAL" [Pending]
+     DB Name    : "MAHDI MUHAMMED" (ID: st-1786382909573-346)
+
+  76. Reg No: 26813 | Class: C2B
+     Excel Name : "MUHAMMED RIYAN K V" [Verified]
+     DB Name    : "MUFTI MUHAMMED" (ID: st-1786382909573-821)
+
+  77. Reg No: 25635 | Class: c2c
+     Excel Name : "ABDULLA KASSIM" [Pending]
+     DB Name    : "ABDULLA KASSIM KURUNGOT" (ID: c2c-2-1785605502891)
+
+  78. Reg No: 25637 | Class: c2c
+     Excel Name : "AFHAM SHAHEER" [Pending]
+     DB Name    : "AFHAM SHAHEER NELLIKKA" (ID: c2c-3-1785605502891)
+
+  79. Reg No: 25638 | Class: C1C
+     Excel Name : "AHMD YASEEN BN SHABEER" [Verified]
+     DB Name    : "MUHAMMED YASEEN" (ID: st-1786467299758-210)
+
+  80. Reg No: 25643 | Class: c2c
+     Excel Name : "AZEEM AHAMMED Y M" [Verified]
+     DB Name    : "AHAMMED YASEEN BIN SHABEER" (ID: c2c-4-1785605502891)
+
+  81. Reg No: 25650 | Class: c2c
+     Excel Name : "MOHAMMED ISSAM PN" [Verified]
+     DB Name    : "MIOHAMMED ISSAM PN" (ID: c2c-13-1785605502891)
+
+  82. Reg No: 25623 | Class: s2a
+     Excel Name : "JUNAH MEHARIN" [Pending]
+     DB Name    : "JUNAH MEHARIN BENT KUNHAMMED" (ID: s2a-11-1785606520322)
+
+  83. Reg No: 25702 | Class: s2b
+     Excel Name : "HATHIM ZAMAN NABEEL" [Pending]
+     DB Name    : "DHILHAQ HASSAN MP" (ID: s2b-3-1785606373193)
+
+  84. Reg No: 25703 | Class: s2b
+     Excel Name : "IHAN INTHIKAF VALIYA MAPPLI" [Verified]
+     DB Name    : "HATHIM ZAMAN NABEEL" (ID: s2b-4-1785606373193)
+
+  85. Reg No: 25704 | Class: s2b
+     Excel Name : "IHSAN ABDULLA MUHAMMAD" [Verified]
+     DB Name    : "IHAN INTHIKAF VALIYA MAPPLILAKAM" (ID: s2b-5-1785606373193)
+
+  86. Reg No: 25705 | Class: s2b
+     Excel Name : "LABBEB NOUSHAD" [Verified]
+     DB Name    : "IHSAN ABDULLA MUHAMMAD" (ID: s2b-6-1785606373193)
+
+  87. Reg No: 25709 | Class: s2b
+     Excel Name : "MOHAMMED IZAN DARVISH" [Pending]
+     DB Name    : "MOHAMMED IMRAN" (ID: s2b-10-1785606373193)
+
+  88. Reg No: 25711 | Class: s2b
+     Excel Name : "MUHAMMED HANAN ANZAR" [Verified]
+     DB Name    : "MOHAMMED IZAN DARVISH" (ID: s2b-11-1785606373193)
+
+  89. Reg No: 25712 | Class: s2b
+     Excel Name : "MUHAMMED AMEEN P.V" [Pending]
+     DB Name    : "MUHAMMAD HANAN ANZAR" (ID: s2b-12-1785606373193)
+
+  90. Reg No: 25713 | Class: s2b
+     Excel Name : "MUHAMMED HAMID TK" [Pending]
+     DB Name    : "MUHAMMED AMEEN P.V" (ID: s2b-13-1785606373193)
+
+  91. Reg No: 25715 | Class: s2b
+     Excel Name : "MUHAMMED MINHAJ K" [Pending]
+     DB Name    : "MUHAMMED HAMID TK" (ID: s2b-14-1785606373193)
+
+  92. Reg No: 25716 | Class: s2b
+     Excel Name : "MUHAMMED SAHAL T" [Pending]
+     DB Name    : "MUHAMMED MINHAJ K" (ID: s2b-15-1785606373193)
+
+  93. Reg No: 25717 | Class: s2b
+     Excel Name : "MUHAMMED SHAFEEQUE" [Pending]
+     DB Name    : "MUHAMMED SAHAL T" (ID: s2b-16-1785606373193)
+
+  94. Reg No: 25719 | Class: s2b
+     Excel Name : "MUHAMMED SWALAH KP" [Pending]
+     DB Name    : "MUHAMMED SHAFEEQUE" (ID: s2b-17-1785606373193)
+
+  95. Reg No: 25720 | Class: s2b
+     Excel Name : "REYHAN ANEES MALBARIE" [Verified]
+     DB Name    : "MUHAMMED SWALAH KP" (ID: s2b-18-1785606373193)
+
+  96. Reg No: 25721 | Class: s2b
+     Excel Name : "SHAHAN SHABEEB" [Verified]
+     DB Name    : "REYHAN ANEES MALBARIE" (ID: s2b-19-1785606373193)
+
+  97. Reg No: 26731 | Class: s1a
+     Excel Name : "FATHIMA SHAIKHA MUKKANAKKIL" [Pending]
+     DB Name    : "FATHIMA SHAIKHA M" (ID: s1a-6-1785605798786)
+
+=== [D] DUPLICATE REGISTER NUMBERS IN EXCEL ===
+  Total: 6 duplicate reg groups
+  Reg No "26848" appears 2 times:
+    - Row 215: "RAFAN MOHAMMED E" [Verified]
+    - Row 231: "MUHAMMED RAFAN MM" [Verified]
+  Reg No "26851" appears 2 times:
+    - Row 176: "IMRAN K" [Pending]
+    - Row 208: "MUHAMMED HASHIM P" [Pending]
+  Reg No "26865" appears 2 times:
+    - Row 130: "MOHAMMED FADI KT" [Pending]
+    - Row 203: "MHD FANI KUDUVILL" [Verified]
+  Reg No "26875" appears 2 times:
+    - Row 185: "MUHAMMED HADHI" [Pending]
+    - Row 227: "MUHAMMED HADHI K" [Verified]
+  Reg No "26880" appears 2 times:
+    - Row 109: "ABDUL HADHI K.S" [Verified]
+    - Row 161: "ABDUL HADHI K.S" [Verified]
+  Reg No "26882" appears 2 times:
+    - Row 112: "ABDULLAH WAIZ.N.P" [Pending]
+    - Row 162: "ABDULLAH WAIZ.N.P" [Pending]

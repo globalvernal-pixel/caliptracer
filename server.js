@@ -276,20 +276,28 @@ async function initDb() {
     }
 
 
-    // Enable Row Level Security (RLS) on all public tables for Supabase security compliance
+    // --- Phone Register Students Table (separate from main students) ---
     await pool.query(`
-      ALTER TABLE IF EXISTS app_users ENABLE ROW LEVEL SECURITY;
-      ALTER TABLE IF EXISTS morning_bliss_summary ENABLE ROW LEVEL SECURITY;
-      ALTER TABLE IF EXISTS app_config ENABLE ROW LEVEL SECURITY;
-      ALTER TABLE IF EXISTS phone_passes ENABLE ROW LEVEL SECURITY;
-      ALTER TABLE IF EXISTS students ENABLE ROW LEVEL SECURITY;
-      ALTER TABLE IF EXISTS student_history ENABLE ROW LEVEL SECURITY;
+      CREATE TABLE IF NOT EXISTS phone_register_students (
+        id SERIAL PRIMARY KEY,
+        locker_no VARCHAR(20) DEFAULT '',
+        register_number VARCHAR(20) NOT NULL,
+        name VARCHAR(255) NOT NULL,
+        phone_type VARCHAR(10) DEFAULT 'school',
+        locker_status VARCHAR(20) DEFAULT 'Pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(register_number, name)
+      );
     `);
+
+    await pool.query(`ALTER TABLE phone_register_students ADD COLUMN IF NOT EXISTS phone_model VARCHAR(100) DEFAULT '';`);
 
   } catch (err) {
     console.error('Database initialization error:', err);
   }
 }
+
 
 // API Endpoints
 
@@ -950,8 +958,111 @@ app.post('/api/hostel-config', async (req, res) => {
   }
 });
 
+// --- Phone Register Students API ---
+
+// GET all phone register students
+app.get('/api/phone-register-students', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM phone_register_students ORDER BY locker_no ASC, name ASC');
+    res.json(result.rows.map(r => ({
+      id: r.id,
+      lockerNo: r.locker_no,
+      registerNumber: r.register_number,
+      name: r.name,
+      phoneType: r.phone_type || 'school',
+      phoneModel: r.phone_model || '',
+      lockerStatus: r.locker_status || 'Pending',
+      createdAt: r.created_at,
+      updatedAt: r.updated_at
+    })));
+  } catch (err) {
+    console.error('Error fetching phone register students:', err);
+    res.status(500).json({ error: 'Failed to fetch phone register students' });
+  }
+});
+
+// Bulk upsert phone register students (from Excel import)
+app.post('/api/phone-register-students/bulk', async (req, res) => {
+  try {
+    const { students } = req.body;
+    if (!Array.isArray(students) || students.length === 0) {
+      return res.status(400).json({ error: 'No students provided' });
+    }
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      let inserted = 0;
+      for (const s of students) {
+        if (!s.registerNumber || !s.name) continue;
+        await client.query(`
+          INSERT INTO phone_register_students (locker_no, register_number, name, phone_type, locker_status, phone_model)
+          VALUES ($1, $2, $3, $4, $5, $6)
+          ON CONFLICT (register_number, name)
+          DO UPDATE SET
+            locker_no = EXCLUDED.locker_no,
+            phone_type = EXCLUDED.phone_type,
+            locker_status = EXCLUDED.locker_status,
+            phone_model = EXCLUDED.phone_model,
+            updated_at = CURRENT_TIMESTAMP
+        `, [
+          s.lockerNo || '',
+          String(s.registerNumber).trim(),
+          String(s.name).trim(),
+          s.phoneType || 'school',
+          s.lockerStatus || 'Pending',
+          s.phoneModel || ''
+        ]);
+        inserted++;
+      }
+      await client.query('COMMIT');
+      res.json({ success: true, count: inserted });
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  } catch (err) {
+    console.error('Error bulk inserting phone register students:', err);
+    res.status(500).json({ error: 'Failed to bulk insert phone register students' });
+  }
+});
+
+// Update a single phone register student (locker_status / phone_model)
+app.patch('/api/phone-register-students/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { lockerStatus, phoneModel, phoneType } = req.body;
+    const result = await pool.query(`
+      UPDATE phone_register_students
+      SET locker_status = COALESCE($1, locker_status),
+          phone_model = COALESCE($2, phone_model),
+          phone_type = COALESCE($3, phone_type),
+          updated_at = CURRENT_TIMESTAMP
+      WHERE id = $4 RETURNING *
+    `, [lockerStatus, phoneModel, phoneType, id]);
+    if (result.rows.length === 0) return res.status(404).json({ error: 'Student not found' });
+    const r = result.rows[0];
+    res.json({ success: true, id: r.id, lockerStatus: r.locker_status, phoneModel: r.phone_model, phoneType: r.phone_type });
+  } catch (err) {
+    console.error('Error updating phone register student:', err);
+    res.status(500).json({ error: 'Failed to update phone register student' });
+  }
+});
+
+// Delete phone register student
+app.delete('/api/phone-register-students/:id', async (req, res) => {
+  try {
+    await pool.query('DELETE FROM phone_register_students WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to delete student' });
+  }
+});
+
 // --- Phone Pass Management API Endpoints ---
 app.get('/api/phone-passes', async (req, res) => {
+
   try {
     const result = await pool.query('SELECT * FROM phone_passes ORDER BY created_at DESC');
     const passes = result.rows.map(row => ({

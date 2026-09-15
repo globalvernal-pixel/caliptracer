@@ -2204,6 +2204,11 @@ ${selectedStudentSummaries.join('\n')}`;
   const [phonePassStudentSearch, setPhonePassStudentSearch] = useState('');
   const [phonePassClassFilter, setPhonePassClassFilter] = useState('all');
 
+  // --- Phone Register Students (from Excel / separate DB table) ---
+  const [phoneRegisterStudents, setPhoneRegisterStudents] = useState([]);
+  const [phoneRegStudentSearch, setPhoneRegStudentSearch] = useState('');
+  const [phoneRegTypeFilter, setPhoneRegTypeFilter] = useState('school'); // 'school' | 'home'
+
   // --- Phone Pass PDF Export State ---
   const [showPhonePassPdfModal, setShowPhonePassPdfModal] = useState(false);
   const [pdfPhoneTypeFilter, setPdfPhoneTypeFilter] = useState('school'); // 'school' | 'home'
@@ -2412,8 +2417,18 @@ ${selectedStudentSummaries.join('\n')}`;
       .catch(err => console.error("Error fetching phone passes:", err));
   };
 
+  const fetchPhoneRegisterStudents = () => {
+    fetch('/api/phone-register-students')
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (Array.isArray(data)) setPhoneRegisterStudents(data);
+      })
+      .catch(err => console.error("Error fetching phone register students:", err));
+  };
+
   useEffect(() => {
     fetchPhonePasses();
+    fetchPhoneRegisterStudents();
     const interval = setInterval(fetchPhonePasses, 8000);
     return () => clearInterval(interval);
   }, []);
@@ -7937,149 +7952,138 @@ ${selectedStudentSummaries.join('\n')}`;
                     <button
                       type="button"
                       onClick={() => setPhonePassStudentTypeFilter('school')}
-                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black uppercase transition-all flex items-center justify-center gap-1.5 ${phonePassStudentTypeFilter === 'school' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-800'
-                        }`}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black uppercase transition-all flex items-center justify-center gap-1.5 ${phonePassStudentTypeFilter === 'school' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-800'}`}
                     >
                       <School className="w-3.5 h-3.5" />
-                      <span>School ({students.filter(s => (s.phoneType || 'school') === 'school').length})</span>
+                      <span>School ({phoneRegisterStudents.filter(s => (s.phoneType || 'school') === 'school').length})</span>
                     </button>
                     <button
                       type="button"
                       onClick={() => setPhonePassStudentTypeFilter('home')}
-                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black uppercase transition-all flex items-center justify-center gap-1.5 ${phonePassStudentTypeFilter === 'home' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-800'
-                        }`}
+                      className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-black uppercase transition-all flex items-center justify-center gap-1.5 ${phonePassStudentTypeFilter === 'home' ? 'bg-blue-600 text-white shadow-xs' : 'text-slate-600 hover:text-slate-800'}`}
                     >
                       <UserCheck className="w-3.5 h-3.5" />
-                      <span>Home ({students.filter(s => s.phoneType === 'home').length})</span>
+                      <span>Home ({phoneRegisterStudents.filter(s => s.phoneType === 'home').length})</span>
                     </button>
                   </div>
                 </div>
 
-                {/* Search and Class Filter Bar */}
+                {/* Search Filter Bar */}
                 <div className="p-3 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 shrink-0">
                   <div className="relative flex-1 min-w-[200px]">
                     <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
                       type="text"
-                      value={phonePassStudentSearch}
-                      onChange={e => setPhonePassStudentSearch(e.target.value)}
-                      placeholder="Search student by name..."
+                      value={phoneRegStudentSearch}
+                      onChange={e => setPhoneRegStudentSearch(e.target.value)}
+                      placeholder="Search by name or reg no..."
                       className="w-full py-2 pl-9 pr-3 bg-slate-50 border border-slate-200 rounded-xl font-bold text-xs text-slate-800 focus:outline-none focus:border-emerald-500"
                     />
                   </div>
-
-                  <select
-                    value={phonePassClassFilter}
-                    onChange={e => setPhonePassClassFilter(e.target.value)}
-                    className="py-2 px-3 bg-slate-50 border border-slate-200 rounded-xl font-extrabold text-xs text-slate-800 uppercase focus:outline-none focus:border-emerald-500"
-                  >
-                    <option value="all">All Classes</option>
-                    {CLASSES.map(c => (
-                      <option key={c} value={c}>Class {c.toUpperCase()}</option>
-                    ))}
-                  </select>
+                  <span className="text-[10px] font-extrabold text-slate-500 uppercase">
+                    {phoneRegisterStudents.filter(s => (s.phoneType || 'school') === phonePassStudentTypeFilter && (!phoneRegStudentSearch || s.name.toLowerCase().includes(phoneRegStudentSearch.toLowerCase()) || s.registerNumber.includes(phoneRegStudentSearch))).length} Students
+                  </span>
                 </div>
 
-                {/* Student Registry Table */}
+                {/* Phone Register Students Table — from Excel/DB */}
                 <div className="flex-1 overflow-y-auto p-3 sm:p-4 custom-scrollbar">
                   <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
                     <table className="w-full text-left text-xs">
                       <thead className="bg-slate-100 text-slate-500 font-extrabold uppercase text-[10px] tracking-wider border-b border-slate-200">
                         <tr>
                           <th className="p-3">#</th>
+                          <th className="p-3">Locker</th>
                           <th className="p-3">Reg No</th>
                           <th className="p-3">Student Name</th>
-                          <th className="p-3">Class</th>
-                          <th className="p-3">Category</th>
                           <th className="p-3">Phone Model</th>
                           <th className="p-3">Pass Status</th>
                           <th className="p-3 text-right">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100 font-semibold text-slate-700">
-                        {students
+                        {phoneRegisterStudents
                           .filter(s => {
                             const matchType = (s.phoneType || 'school') === phonePassStudentTypeFilter;
-                            const matchSearch = !phonePassStudentSearch ||
-                              s.name.toLowerCase().includes(phonePassStudentSearch.toLowerCase()) ||
-                              (s.registerNumber && s.registerNumber.includes(phonePassStudentSearch));
-                            const matchClass = phonePassClassFilter === 'all' || s.class.toLowerCase() === phonePassClassFilter.toLowerCase();
-                            return matchType && matchSearch && matchClass;
+                            const matchSearch = !phoneRegStudentSearch ||
+                              s.name.toLowerCase().includes(phoneRegStudentSearch.toLowerCase()) ||
+                              s.registerNumber.includes(phoneRegStudentSearch);
+                            return matchType && matchSearch;
                           })
                           .map((st, idx) => {
-                            const activePass = phonePasses.find(p => String(p.studentId) === String(st.id) && p.status === 'OUT');
+                            // Pending = student wants pass (OUT needed), Verified = pass confirmed/IN
+                            const isPending = st.lockerStatus === 'Pending';
+                            const activePass = phonePasses.find(p =>
+                              (p.studentName && p.studentName.toUpperCase() === st.name.toUpperCase()) ||
+                              p.registerNumber === st.registerNumber
+                            );
+                            const isOut = activePass && activePass.status === 'OUT';
+                            const isIn = !isPending || (activePass && activePass.status === 'RETURNED');
 
                             return (
                               <tr key={st.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="p-3 font-mono text-[10px] text-slate-400">#{idx + 1}</td>
                                 <td className="p-3">
-                                  <input
-                                    type="text"
-                                    maxLength={5}
-                                    defaultValue={st.registerNumber || ''}
-                                    onBlur={e => {
-                                      const val = e.target.value.trim();
-                                      if (val !== (st.registerNumber || '')) {
-                                        handleUpdateStudentPhoneDetails(st.id, st.phoneType || 'school', st.phoneModel || '', val);
-                                      }
-                                    }}
-                                    placeholder="5-digit"
-                                    className="py-1 px-2 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-extrabold text-slate-800 focus:outline-none focus:border-emerald-500 w-20 tracking-wider"
-                                  />
-                                </td>
-                                <td className="p-3 font-extrabold text-slate-800">{st.name}</td>
-                                <td className="p-3">
-                                  <span className="font-extrabold text-[10px] bg-slate-100 text-slate-700 px-2 py-0.5 rounded-md uppercase">
-                                    {st.class}
+                                  <span className="font-extrabold text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md">
+                                    {st.lockerNo || '—'}
                                   </span>
                                 </td>
-                                <td className="p-3">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      const newType = (st.phoneType || 'school') === 'school' ? 'home' : 'school';
-                                      handleUpdateStudentPhoneDetails(st.id, newType, st.phoneModel || '', st.registerNumber || '');
-                                    }}
-                                    className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase transition-all flex items-center gap-1 w-fit cursor-pointer ${(st.phoneType || 'school') === 'school'
-                                        ? 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
-                                        : 'bg-blue-100 text-blue-800 hover:bg-blue-200'
-                                      }`}
-                                  >
-                                    {(st.phoneType || 'school') === 'school' ? '🏫 School' : '🏠 Home'}
-                                  </button>
-                                </td>
+                                <td className="p-3 font-mono font-extrabold text-slate-700 tracking-wider">{st.registerNumber}</td>
+                                <td className="p-3 font-extrabold text-slate-800">{st.name}</td>
                                 <td className="p-3">
                                   <input
                                     type="text"
+                                    key={st.id + '_model'}
                                     defaultValue={st.phoneModel || ''}
-                                    onBlur={e => {
-                                      if (e.target.value !== (st.phoneModel || '')) {
-                                        handleUpdateStudentPhoneDetails(st.id, st.phoneType || 'school', e.target.value, st.registerNumber || '');
+                                    onBlur={async e => {
+                                      const val = e.target.value.trim();
+                                      if (val !== (st.phoneModel || '')) {
+                                        await fetch(`/api/phone-register-students/${st.id}`, {
+                                          method: 'PATCH',
+                                          headers: { 'Content-Type': 'application/json' },
+                                          body: JSON.stringify({ phoneModel: val })
+                                        });
+                                        fetchPhoneRegisterStudents();
                                       }
                                     }}
-                                    placeholder="Enter phone details..."
-                                    className="py-1 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 w-44"
+                                    placeholder="Phone model..."
+                                    className="py-1 px-2.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-bold text-slate-800 focus:outline-none focus:border-emerald-500 w-36"
                                   />
                                 </td>
                                 <td className="p-3">
-                                  {activePass ? (
-                                    <span className="font-black text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full uppercase flex items-center gap-1 w-fit animate-pulse">
+                                  {isOut ? (
+                                    <span className="font-black text-[10px] bg-amber-100 text-amber-800 px-2 py-1 rounded-full uppercase flex items-center gap-1 w-fit animate-pulse">
                                       <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
                                       OUT (Active)
                                     </span>
+                                  ) : isPending ? (
+                                    <span className="font-black text-[10px] bg-orange-50 text-orange-700 border border-orange-200 px-2 py-1 rounded-full uppercase flex items-center gap-1 w-fit">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+                                      Wants Pass
+                                    </span>
                                   ) : (
-                                    <span className="font-bold text-[10px] text-slate-400 uppercase">Clear</span>
+                                    <span className="font-black text-[10px] bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full uppercase flex items-center gap-1 w-fit">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-600" />
+                                      IN ✓
+                                    </span>
                                   )}
                                 </td>
                                 <td className="p-3 text-right">
                                   <button
-                                    disabled={(st.phoneType || 'school') === 'home' || !st.phoneModel || !st.phoneModel.trim() || !!activePass || !hasPermission('phone_pass_issue')}
+                                    disabled={!!isOut || !hasPermission('phone_pass_issue')}
                                     onClick={() => {
-                                      setPhonePassSelectedStudent(st);
+                                      // Map phone register student to pass-compatible object
+                                      const passStudent = {
+                                        id: `preg-${st.id}`,
+                                        name: st.name,
+                                        class: '',
+                                        phoneType: st.phoneType || 'school',
+                                        phoneModel: st.phoneModel || '',
+                                        registerNumber: st.registerNumber
+                                      };
+                                      setPhonePassSelectedStudent(passStudent);
                                       setPhonePassStep(2);
                                       setShowIssuePhonePassModal(true);
                                     }}
-                                    title={!st.phoneModel || !st.phoneModel.trim() ? "Add Phone Name first to issue pass" : ""}
                                     className="py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl font-extrabold text-[11px] transition-all"
                                   >
                                     + Issue Pass
