@@ -138,7 +138,7 @@ async function main() {
   const outInserted = await insertChunked(pendingStudents, 'OUT', false, 50);
 
   console.log('  Inserting IN passes (Verified):');
-  const inInserted  = await insertChunked(verifiedStudents, 'RETURNED', true, 50);
+  const inInserted  = await insertChunked(verifiedStudents, 'IN', true, 50);
 
   // ── Final summary ──────────────────────────────────────────────
   const { rows: [{ count }] } = await pool.query('SELECT COUNT(*) FROM phone_passes');

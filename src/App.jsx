@@ -7606,7 +7606,7 @@ ${selectedStudentSummaries.join('\n')}`;
                   { key: 'all', label: `All (${phonePasses.length})` },
                   { key: 'ISSUED', label: `🔵 ISSUED (${phonePasses.filter(p => (p.status || 'ISSUED') === 'ISSUED').length})` },
                   { key: 'OUT', label: `🟢 OUT (${phonePasses.filter(p => p.status === 'OUT').length})` },
-                  { key: 'IN', label: `✅ IN (${phonePasses.filter(p => p.status === 'IN').length})` },
+                  { key: 'IN', label: `✅ IN (${phonePasses.filter(p => ['IN', 'RETURNED'].includes(p.status)).length})` },
                   { key: 'late', label: `⚠️ Late (${phonePasses.filter(p => p.isLate || (p.status === 'OUT' && new Date() > new Date(p.allowedUntil))).length})` }
                 ].map(tab => (
                   <button
@@ -7640,7 +7640,7 @@ ${selectedStudentSummaries.join('\n')}`;
 
                   if (phonePassFilterStatus === 'ISSUED') return passStatus === 'ISSUED';
                   if (phonePassFilterStatus === 'OUT') return passStatus === 'OUT';
-                  if (phonePassFilterStatus === 'IN') return passStatus === 'IN';
+                  if (phonePassFilterStatus === 'IN') return ['IN', 'RETURNED'].includes(passStatus);
                   if (phonePassFilterStatus === 'late') return p.isLate || (passStatus === 'OUT' && isOverdue);
                   return true;
                 });
@@ -8014,10 +8014,9 @@ ${selectedStudentSummaries.join('\n')}`;
                             const isPending = st.lockerStatus === 'Pending';
                             const activePass = phonePasses.find(p =>
                               (p.studentName && p.studentName.toUpperCase() === st.name.toUpperCase()) ||
-                              p.registerNumber === st.registerNumber
+                              String(p.studentId) === `preg-${st.id}`
                             );
-                            const isOut = activePass && activePass.status === 'OUT';
-                            const isIn = !isPending || (activePass && activePass.status === 'RETURNED');
+                            const isOut = activePass ? activePass.status === 'OUT' || activePass.status === 'ISSUED' : isPending;
 
                             return (
                               <tr key={st.id} className="hover:bg-slate-50 transition-colors">
@@ -8054,11 +8053,6 @@ ${selectedStudentSummaries.join('\n')}`;
                                     <span className="font-black text-[10px] bg-amber-100 text-amber-800 px-2 py-1 rounded-full uppercase flex items-center gap-1 w-fit animate-pulse">
                                       <span className="w-1.5 h-1.5 rounded-full bg-amber-600" />
                                       OUT (Active)
-                                    </span>
-                                  ) : isPending ? (
-                                    <span className="font-black text-[10px] bg-orange-50 text-orange-700 border border-orange-200 px-2 py-1 rounded-full uppercase flex items-center gap-1 w-fit">
-                                      <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                                      Wants Pass
                                     </span>
                                   ) : (
                                     <span className="font-black text-[10px] bg-emerald-100 text-emerald-800 px-2 py-1 rounded-full uppercase flex items-center gap-1 w-fit">
