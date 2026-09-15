@@ -1,0 +1,107 @@
+[
+  {
+    "key": "mohammedhaneennh",
+    "count": 2,
+    "records": [
+      {
+        "id": "st-1788196932756-485",
+        "name": "MOHAMMED HANEEN NH",
+        "class": "C1B",
+        "registerNumber": "",
+        "star": 0,
+        "tally": 0,
+        "fine": 100
+      },
+      {
+        "id": "c1b-20-1785606211302",
+        "name": "MOHAMMED HANEEN N.H",
+        "class": "c1b",
+        "registerNumber": "25856",
+        "star": 2,
+        "tally": 5,
+        "fine": 0
+      }
+    ]
+  },
+  {
+    "key": "muhammedsidhanvp",
+    "count": 2,
+    "records": [
+      {
+        "id": "st-1786382460142-933",
+        "name": "MUHAMMED SIDHAN VP",
+        "class": "C1B",
+        "registerNumber": "26811",
+        "star": 0,
+        "tally": 6,
+        "fine": 50
+      },
+      {
+        "id": "c1b-33-1785606211302",
+        "name": "MUHAMMED SIDHAN V P",
+        "class": "c1b",
+        "registerNumber": "",
+        "star": 1,
+        "tally": 9,
+        "fine": 100
+      }
+    ]
+  },
+  {
+    "key": "muhammedyaseenmp",
+    "count": 2,
+    "records": [
+      {
+        "id": "st-1789275923517-786",
+        "name": "MUHAMMED YASEEN MP",
+        "class": "C1C",
+        "registerNumber": "",
+        "star": 0,
+        "tally": 3,
+        "fine": 100
+      },
+      {
+        "id": "c1b-34-1785606211302",
+        "name": "MUHAMMED YASEEN M P",
+        "class": "c1b",
+        "registerNumber": "25805",
+        "star": 2,
+        "tally": 16,
+        "fine": 0
+      }
+    ]
+  },
+  {
+    "key": "test",
+    "count": 3,
+    "records": [
+      {
+        "id": "test-1785802464749",
+        "name": "Test 1",
+        "class": "test",
+        "registerNumber": "",
+        "star": 67,
+        "tally": 2,
+        "fine": 200
+      },
+      {
+        "id": "test-1785802474909",
+        "name": "Test 4",
+        "class": "test",
+        "registerNumber": "",
+        "star": 0,
+        "tally": 0,
+        "fine": 0
+      },
+      {
+        "id": "test-1785802487304",
+        "name": "Test 2",
+        "class": "test",
+        "registerNumber": "",
+        "star": 0,
+        "tally": 0,
+        "fine": 0
+      }
+    ]
+  }
+]

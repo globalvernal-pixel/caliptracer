@@ -1,0 +1,354 @@
+{
+  "totalStudents": 377,
+  "duplicateNameGroupsCount": 0,
+  "duplicateRegGroupsCount": 15,
+  "duplicateNames": [],
+  "duplicateRegs": [
+    {
+      "registerNumber": "25644",
+      "count": 2,
+      "records": [
+        {
+          "id": "s1b-8-1785605518822",
+          "name": "AHMED WAFIN K",
+          "class": "s1b",
+          "star": 9,
+          "tally": 3,
+          "fine": 0
+        },
+        {
+          "id": "c2b-2-1785643730074",
+          "name": "FADL AHMED ZULFIQAR ALI",
+          "class": "c2b",
+          "star": 1,
+          "tally": 0,
+          "fine": 1
+        }
+      ]
+    },
+    {
+      "registerNumber": "25721",
+      "count": 2,
+      "records": [
+        {
+          "id": "s2b-19-1785606373193",
+          "name": "REYHAN ANEES MALBARIE",
+          "class": "s2b",
+          "star": 3,
+          "tally": 14,
+          "fine": 101
+        },
+        {
+          "id": "s2b-20-1785606373193",
+          "name": "SHAHAN SHABEEB",
+          "class": "s2b",
+          "star": 5,
+          "tally": 18,
+          "fine": 301
+        }
+      ]
+    },
+    {
+      "registerNumber": "26760",
+      "count": 2,
+      "records": [
+        {
+          "id": "c2a-6-1785606720889",
+          "name": "FATHIMA ZOYA",
+          "class": "c2a",
+          "star": 1,
+          "tally": 3,
+          "fine": 0
+        },
+        {
+          "id": "c1a-33-1785606089000",
+          "name": "SIBA FATHIMA",
+          "class": "c1a",
+          "star": 0,
+          "tally": 0,
+          "fine": 0
+        }
+      ]
+    },
+    {
+      "registerNumber": "26771",
+      "count": 2,
+      "records": [
+        {
+          "id": "c1a-32-1785606089000",
+          "name": "SANA FATHIMA K",
+          "class": "c1a",
+          "star": 0,
+          "tally": 0,
+          "fine": 0
+        },
+        {
+          "id": "s1a-22-1785605798786",
+          "name": "ZABA FATHIMA M",
+          "class": "s1a",
+          "star": 7,
+          "tally": 0,
+          "fine": 0
+        }
+      ]
+    },
+    {
+      "registerNumber": "26809",
+      "count": 2,
+      "records": [
+        {
+          "id": "c1c-6-1785605946219",
+          "name": "AZMI MUHAMMED ASLAM",
+          "class": "c1b",
+          "star": 0,
+          "tally": 6,
+          "fine": 1
+        },
+        {
+          "id": "c1b-38-1785606211302",
+          "name": "SHAMMAS ASLAM",
+          "class": "c1b",
+          "star": 0,
+          "tally": 0,
+          "fine": 100
+        }
+      ]
+    },
+    {
+      "registerNumber": "26823",
+      "count": 2,
+      "records": [
+        {
+          "id": "st-1786468123641-78",
+          "name": "MUHAMMED ATHIF",
+          "class": "C1C",
+          "star": 0,
+          "tally": 6,
+          "fine": 0
+        },
+        {
+          "id": "c1c-21-1785605946219",
+          "name": "MUHAMMED ATHIF A S",
+          "class": "c1c",
+          "star": 2,
+          "tally": 18,
+          "fine": 1
+        }
+      ]
+    },
+    {
+      "registerNumber": "26829",
+      "count": 2,
+      "records": [
+        {
+          "id": "c1c-19-1785605946219",
+          "name": "MUHAMMED AMAN P",
+          "class": "c1c",
+          "star": 1,
+          "tally": 9,
+          "fine": 0
+        },
+        {
+          "id": "st-1786382460141-480",
+          "name": "MUHAMMED RASEEM",
+          "class": "C1B",
+          "star": 0,
+          "tally": 6,
+          "fine": 50
+        }
+      ]
+    },
+    {
+      "registerNumber": "26832",
+      "count": 2,
+      "records": [
+        {
+          "id": "c1b-30-1785606211302",
+          "name": "MUHAMMED NIHAL BARIKKAL",
+          "class": "c1b",
+          "star": 0,
+          "tally": 0,
+          "fine": 0
+        },
+        {
+          "id": "s1a-18-1785605798786",
+          "name": "RIYA FATHIMA P",
+          "class": "s1a",
+          "star": 3,
+          "tally": 3,
+          "fine": 200
+        }
+      ]
+    },
+    {
+      "registerNumber": "26848",
+      "count": 3,
+      "records": [
+        {
+          "id": "st-1786382335188-198",
+          "name": "FAAZ MUHAMMED PS",
+          "class": "C1B",
+          "star": 0,
+          "tally": 6,
+          "fine": 100
+        },
+        {
+          "id": "c1c-27-1785605946219",
+          "name": "MUHAMMED RAFAN M",
+          "class": "c1c",
+          "star": 0,
+          "tally": 21,
+          "fine": 102
+        },
+        {
+          "id": "c1b-37-1785606211302",
+          "name": "RAFAN MOHAMMED",
+          "class": "c1b",
+          "star": 0,
+          "tally": 0,
+          "fine": 1
+        }
+      ]
+    },
+    {
+      "registerNumber": "26851",
+      "count": 2,
+      "records": [
+        {
+          "id": "c1b-18-1785606211302",
+          "name": "IMRAN K",
+          "class": "c1b",
+          "star": 3,
+          "tally": 8,
+          "fine": 200
+        },
+        {
+          "id": "st-1786468188752-567",
+          "name": "MUHAMMED HASHIM",
+          "class": "C1C",
+          "star": 0,
+          "tally": 3,
+          "fine": 0
+        }
+      ]
+    },
+    {
+      "registerNumber": "26855",
+      "count": 3,
+      "records": [
+        {
+          "id": "c1c-2-1785605946219",
+          "name": "ABDUL SAMAD CA",
+          "class": "c1c",
+          "star": 5,
+          "tally": 3,
+          "fine": 0
+        },
+        {
+          "id": "c1a-26-1785606089000",
+          "name": "KHADEEJA ABDUL LATHIEF",
+          "class": "c1a",
+          "star": 0,
+          "tally": 0,
+          "fine": 1
+        },
+        {
+          "id": "c1c-28-1785605946219",
+          "name": "MUHAMMED RASAL",
+          "class": "c1c",
+          "star": 6,
+          "tally": 3,
+          "fine": 0
+        }
+      ]
+    },
+    {
+      "registerNumber": "26910",
+      "count": 2,
+      "records": [
+        {
+          "id": "c1a-24-1785606089000",
+          "name": "INSHAH FATHIMA",
+          "class": "c1a",
+          "star": 4,
+          "tally": 0,
+          "fine": 0
+        },
+        {
+          "id": "s1a-16-1785605798786",
+          "name": "NAIZA FATHIMA C",
+          "class": "s1a",
+          "star": 10,
+          "tally": 3,
+          "fine": 100
+        }
+      ]
+    },
+    {
+      "registerNumber": "26912",
+      "count": 2,
+      "records": [
+        {
+          "id": "jr8-10-1785755720712",
+          "name": "MOHAMMED REHAN S",
+          "class": "jr8",
+          "star": 3,
+          "tally": 3,
+          "fine": 0
+        },
+        {
+          "id": "s1b-27-1785605518822",
+          "name": "MUHAMMED MUJTHABA",
+          "class": "s1b",
+          "star": 4,
+          "tally": 3,
+          "fine": 0
+        }
+      ]
+    },
+    {
+      "registerNumber": "26920",
+      "count": 2,
+      "records": [
+        {
+          "id": "c1c-13-1785605946219",
+          "name": "MOHAMMED EASA",
+          "class": "c1c",
+          "star": 5,
+          "tally": 3,
+          "fine": 0
+        },
+        {
+          "id": "s1b-22-1785605518822",
+          "name": "MOHAMMED NIHAL KPp",
+          "class": "s1b",
+          "star": 2,
+          "tally": 3,
+          "fine": 201
+        }
+      ]
+    },
+    {
+      "registerNumber": "26922",
+      "count": 2,
+      "records": [
+        {
+          "id": "c1c-18-1785605946219",
+          "name": "MUHAMMED AFLAH",
+          "class": "c1c",
+          "star": 5,
+          "tally": 3,
+          "fine": 0
+        },
+        {
+          "id": "jr9-1786002131871",
+          "name": "Muhammed Zishan Shanif",
+          "class": "jr9",
+          "star": 1,
+          "tally": 0,
+          "fine": 0
+        }
+      ]
+    }
+  ]
+}
