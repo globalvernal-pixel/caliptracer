@@ -89,9 +89,13 @@ function mapRowToStudent(row) {
     neatAndOrderTally: row.neat_and_order_tally || 0,
     neatAndOrderReason: row.neat_and_order_reason || '',
     neatAndOrderIncidents: row.neat_and_order_incidents || 0,
-    fine: finalFine,
+    fine: finalFine || Number(row.spot_fine) || 0,
     fineCount: finalFineCount,
     fineReason: row.fine_reason || '',
+    spotFine: Number(row.spot_fine) || finalFine || 0,
+    blackSheet: Number(row.black_sheet) || 0,
+    yellowSheet: Number(row.yellow_sheet) || 0,
+    apologyLetter: Number(row.apology_letter) || 0,
     ineligible: row.ineligible || false,
     ineligibleReason: row.ineligible_reason || '',
     morningBlissMark: row.morning_bliss_mark || null,
@@ -229,6 +233,10 @@ async function initDb() {
       ADD COLUMN IF NOT EXISTS phone_type VARCHAR(20) DEFAULT 'school',
       ADD COLUMN IF NOT EXISTS phone_model VARCHAR(100) DEFAULT '',
       ADD COLUMN IF NOT EXISTS register_number VARCHAR(10) DEFAULT '',
+      ADD COLUMN IF NOT EXISTS black_sheet INT DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS yellow_sheet INT DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS apology_letter INT DEFAULT 0,
+      ADD COLUMN IF NOT EXISTS spot_fine NUMERIC DEFAULT 0,
       ADD COLUMN IF NOT EXISTS summary_id INT REFERENCES morning_bliss_summary(id) ON DELETE SET NULL;
     `);
 
@@ -443,14 +451,45 @@ app.put('/api/students/:id', async (req, res) => {
       RETURNING *
     `, [name, className, star, tally, starReason || '', tallyReason || '', id, diaryStar || 0, diaryTally || 0, neatAndOrderTally || 0, neatAndOrderReason || '', fine || 0, fineReason || '', ineligible || false, ineligibleReason || '', fineCount || 0, neatAndOrderIncidents || 0, cTotal, cGrade]);
     
-    if (result.rows.length === 0) {
-      return res.status(404).json({ error: 'Student not found' });
-    }
-    
     res.json(mapRowToStudent(result.rows[0]));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to update student' });
+  }
+});
+
+// Update student discipline metrics (black sheet, yellow sheet, apology letter, spot fine)
+app.put('/api/students/:id/discipline', async (req, res) => {
+  const { id } = req.params;
+  const { blackSheet, yellowSheet, apologyLetter, spotFine, fineReason } = req.body;
+  try {
+    const result = await pool.query(`
+      UPDATE students
+      SET black_sheet = COALESCE($1, black_sheet),
+          yellow_sheet = COALESCE($2, yellow_sheet),
+          apology_letter = COALESCE($3, apology_letter),
+          spot_fine = COALESCE($4, spot_fine),
+          fine = COALESCE($4, fine),
+          fine_reason = COALESCE($5, fine_reason)
+      WHERE id = $6
+      RETURNING *
+    `, [
+      blackSheet !== undefined ? Number(blackSheet) : null,
+      yellowSheet !== undefined ? Number(yellowSheet) : null,
+      apologyLetter !== undefined ? Number(apologyLetter) : null,
+      spotFine !== undefined ? Number(spotFine) : null,
+      fineReason || null,
+      id
+    ]);
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ error: 'Student not found' });
+    }
+
+    res.json(mapRowToStudent(result.rows[0]));
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update student discipline record' });
   }
 });
 

@@ -63,6 +63,7 @@ import {
   StopCircle,
   FileDown,
   Filter,
+  Printer,
   Cpu
 } from 'lucide-react';
 
@@ -2461,6 +2462,112 @@ ${selectedStudentSummaries.join('\n')}`;
   const [showPhonePassPdfModal, setShowPhonePassPdfModal] = useState(false);
   const [pdfPhoneTypeFilter, setPdfPhoneTypeFilter] = useState('school'); // 'school' | 'home'
   const [pdfClassFilter, setPdfClassFilter] = useState('all'); // 'all' or class name e.g. 'c1b'
+
+  // --- Class Disciplinary Report State ---
+  const [showClassReportModal, setShowClassReportModal] = useState(false);
+  const [selectedClassForReport, setSelectedClassForReport] = useState('all'); // 'all' or specific class e.g. 's1b'
+  const [classReportSearch, setClassReportSearch] = useState('');
+  const [editingDisciplineMap, setEditingDisciplineMap] = useState({}); // studentId -> { blackSheet, yellowSheet, apologyLetter, spotFine }
+  const [isSavingDiscipline, setIsSavingDiscipline] = useState(false);
+
+  // Helper to handle incrementing/decrementing discipline counters locally
+  const handleUpdateStudentDisciplineLocal = (studentId, field, delta, currentVal = 0) => {
+    setEditingDisciplineMap(prev => {
+      const existing = prev[studentId] || {};
+      const baseVal = existing[field] !== undefined ? existing[field] : (currentVal || 0);
+      const newVal = Math.max(0, baseVal + delta);
+      return {
+        ...prev,
+        [studentId]: {
+          ...existing,
+          [field]: newVal
+        }
+      };
+    });
+  };
+
+  // Helper to set specific value (e.g. spot fine input)
+  const handleSetStudentDisciplineFieldLocal = (studentId, field, val) => {
+    setEditingDisciplineMap(prev => ({
+      ...prev,
+      [studentId]: {
+        ...(prev[studentId] || {}),
+        [field]: Math.max(0, Number(val) || 0)
+      }
+    }));
+  };
+
+  // Save discipline updates to backend
+  const handleSaveDisciplineChanges = async (studentId) => {
+    const edits = editingDisciplineMap[studentId];
+    if (!edits) return;
+    setIsSavingDiscipline(true);
+    try {
+      const st = students.find(s => s.id === studentId);
+      const res = await fetch(`/api/students/${studentId}/discipline`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          blackSheet: edits.blackSheet !== undefined ? edits.blackSheet : st?.blackSheet,
+          yellowSheet: edits.yellowSheet !== undefined ? edits.yellowSheet : st?.yellowSheet,
+          apologyLetter: edits.apologyLetter !== undefined ? edits.apologyLetter : st?.apologyLetter,
+          spotFine: edits.spotFine !== undefined ? edits.spotFine : (st?.spotFine || st?.fine)
+        })
+      });
+      if (res.ok) {
+        const updatedStudent = await res.json();
+        setStudents(prev => prev.map(s => s.id === studentId ? updatedStudent : s));
+        // clear local edit map for this student
+        setEditingDisciplineMap(prev => {
+          const next = { ...prev };
+          delete next[studentId];
+          return next;
+        });
+      } else {
+        alert("Failed to save discipline update.");
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error saving discipline record.");
+    } finally {
+      setIsSavingDiscipline(false);
+    }
+  };
+
+  // Export Class Report to CSV
+  const handleExportClassReportCSV = (targetClass) => {
+    const classStudents = students.filter(s => targetClass === 'all' || (s.class || '').toLowerCase() === targetClass.toLowerCase());
+    const headers = ['#', 'Student Name', 'Class', 'Register No', 'Spot Fine (INR)', 'Black Sheets', 'Yellow Sheets', 'Apology Letters', 'Total Stars', 'Total Tallies'];
+    const rows = classStudents.map((s, idx) => {
+      const edits = editingDisciplineMap[s.id] || {};
+      const spotFine = edits.spotFine !== undefined ? edits.spotFine : (s.spotFine || s.fine || 0);
+      const blackSheet = edits.blackSheet !== undefined ? edits.blackSheet : (s.blackSheet || 0);
+      const yellowSheet = edits.yellowSheet !== undefined ? edits.yellowSheet : (s.yellowSheet || 0);
+      const apologyLetter = edits.apologyLetter !== undefined ? edits.apologyLetter : (s.apologyLetter || 0);
+      return [
+        idx + 1,
+        `"${s.name}"`,
+        `"${s.class || ''}"`,
+        `"${s.registerNumber || ''}"`,
+        spotFine,
+        blackSheet,
+        yellowSheet,
+        apologyLetter,
+        s.star || 0,
+        s.tally || 0
+      ];
+    });
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `Class_Disciplinary_Report_${targetClass.toUpperCase()}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   // --- Monthly Leave Bulk Pass State ---
   const [showMonthlyLeaveModal, setShowMonthlyLeaveModal] = useState(false);
@@ -8782,7 +8889,7 @@ ${selectedStudentSummaries.join('\n')}`;
                 </div>
 
                 {/* Action Buttons (RBAC Filtered) */}
-                <div className={`grid ${isAdminAuthenticated ? 'grid-cols-5' : 'grid-cols-2'} gap-2`}>
+                <div className={`grid ${isAdminAuthenticated ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3'} gap-2`}>
                   <button
                     onClick={() => {
                       setDownloadSelectedClasses(CLASSES);
@@ -8801,6 +8908,17 @@ ${selectedStudentSummaries.join('\n')}`;
                   >
                     <FileText className="w-3.5 h-3.5 shrink-0" />
                     Report
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setSelectedClassForReport('all');
+                      setShowClassReportModal(true);
+                    }}
+                    className="flex items-center justify-center gap-1.5 py-2.5 px-1 rounded-xl font-extrabold text-[11px] bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs active:scale-[0.98] transition-all"
+                  >
+                    <BookOpen className="w-3.5 h-3.5 shrink-0" />
+                    Class Report
                   </button>
 
                   {isAdminAuthenticated && (
@@ -13498,6 +13616,411 @@ ${selectedStudentSummaries.join('\n')}`;
                 >
                   <Play className="w-4 h-4 fill-current" />
                   <span>{ifFormSubmitting ? 'Starting Session...' : 'Start Session'}</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* --- CLASS DISCIPLINARY & PERFORMANCE REPORT MODAL --- */}
+        {showClassReportModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-5 overflow-y-auto">
+            <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
+              {/* Header */}
+              <div className="p-3.5 sm:p-5 bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2.5 sm:gap-3">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 text-indigo-300 shrink-0">
+                    <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm sm:text-lg font-black tracking-tight text-white flex items-center gap-1.5 flex-wrap">
+                      <span>CLASS DISCIPLINARY & SUMMARY REPORT</span>
+                      <span className="text-[9px] sm:text-[10px] bg-indigo-500/30 border border-indigo-300/30 px-2 py-0.5 rounded-full font-bold text-indigo-200 uppercase tracking-widest">
+                        ACADEMIC & CONDUCT
+                      </span>
+                    </h3>
+                    <p className="text-[11px] sm:text-xs text-indigo-200 font-medium">
+                      Overview of Spot Fines, Black Sheets, Yellow Sheets & Apology Letters
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowClassReportModal(false)}
+                  className="p-1.5 sm:p-2 text-indigo-200 hover:text-white hover:bg-white/10 rounded-xl transition-all shrink-0"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Class Selector Header Bar (Mobile-Responsive Stack) */}
+              <div className="p-3 sm:p-4 bg-indigo-50/50 border-b border-indigo-100 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2.5 shrink-0">
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <span className="text-[11px] sm:text-xs font-black text-indigo-950 uppercase tracking-wider shrink-0">Select Class:</span>
+                  <select
+                    value={selectedClassForReport}
+                    onChange={e => setSelectedClassForReport(e.target.value)}
+                    className="w-full sm:w-auto py-1.5 px-3 bg-white border border-indigo-200 rounded-xl text-xs font-bold text-indigo-900 shadow-xs focus:ring-2 focus:ring-indigo-500"
+                  >
+                    <option value="all">-- All Classes Overview --</option>
+                    {Array.from(new Set((students || []).map(s => (s?.class || '').trim().toUpperCase()).filter(Boolean))).sort().map(clsName => (
+                      <option key={clsName} value={clsName.toLowerCase()}>Class {clsName}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-wrap sm:flex-nowrap items-center gap-2 w-full sm:w-auto">
+                  <div className="relative flex-1 sm:flex-none">
+                    <input
+                      type="text"
+                      placeholder="Search student..."
+                      value={classReportSearch}
+                      onChange={e => setClassReportSearch(e.target.value)}
+                      className="w-full py-1.5 pl-8 pr-3 bg-white border border-slate-300 rounded-xl text-xs font-medium focus:ring-2 focus:ring-indigo-500"
+                    />
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-2.5" />
+                  </div>
+
+                  <button
+                    onClick={() => handleExportClassReportCSV(selectedClassForReport)}
+                    className="flex-1 sm:flex-none py-1.5 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs active:scale-95 transition-all"
+                  >
+                    <FileDown className="w-3.5 h-3.5" />
+                    <span>Export CSV</span>
+                  </button>
+
+                  <button
+                    onClick={() => window.print()}
+                    className="flex-1 sm:flex-none py-1.5 px-3 bg-slate-800 hover:bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs active:scale-95 transition-all"
+                  >
+                    <Printer className="w-3.5 h-3.5" />
+                    <span>Print PDF</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-3 sm:p-6 overflow-y-auto flex-1 space-y-4 sm:space-y-6">
+
+                {/* Back to All Classes Header (When specific class is selected) */}
+                {selectedClassForReport !== 'all' && (
+                  <div className="flex items-center justify-between pb-1">
+                    <button
+                      onClick={() => setSelectedClassForReport('all')}
+                      className="py-1.5 px-3 bg-indigo-100 hover:bg-indigo-200 text-indigo-900 rounded-xl text-xs font-extrabold flex items-center gap-1.5 transition-all active:scale-95"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      <span>← Back to All Classes</span>
+                    </button>
+                    <span className="text-xs font-black text-indigo-950 uppercase tracking-widest">
+                      CLASS {selectedClassForReport.toUpperCase()} REPORT
+                    </span>
+                  </div>
+                )}
+
+                {/* STEP 1: ALL CLASSES OVERVIEW (Vertical snap scrolling on mobile, 4-col grid on desktop) */}
+                {selectedClassForReport === 'all' && (
+                  <div>
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-[11px] sm:text-xs font-extrabold text-slate-500 uppercase tracking-widest">
+                        Select A Class To View Disciplinary & Summary Metrics:
+                      </h4>
+                      <span className="text-[10px] font-bold text-indigo-600 md:hidden animate-pulse">
+                        Swipe up/down for classes ↓
+                      </span>
+                    </div>
+
+                    {/* Container: Vertical snap scrolling on mobile (< md), multi-column grid on desktop (md:) */}
+                    <div className="flex flex-col h-[65vh] md:h-auto overflow-y-scroll md:overflow-y-visible snap-y snap-mandatory scroll-smooth gap-4 md:grid md:grid-cols-3 lg:grid-cols-4">
+                      {Array.from(new Set((students || []).map(s => (s?.class || '').trim().toUpperCase()).filter(Boolean))).sort().map(clsName => {
+                        const classSts = students.filter(s => (s.class || '').trim().toUpperCase() === clsName);
+                        const totalSpotFine = classSts.reduce((acc, s) => acc + (s.spotFine || s.fine || 0), 0);
+                        const totalBlack = classSts.reduce((acc, s) => acc + (s.blackSheet || 0), 0);
+                        const totalYellow = classSts.reduce((acc, s) => acc + (s.yellowSheet || 0), 0);
+                        const totalApology = classSts.reduce((acc, s) => acc + (s.apologyLetter || 0), 0);
+
+                        return (
+                          <div
+                            key={clsName}
+                            onClick={() => setSelectedClassForReport(clsName.toLowerCase())}
+                            className="snap-start snap-always shrink-0 min-h-[65vh] md:min-h-0 w-full flex flex-col justify-center items-center p-6 md:p-4 bg-white hover:bg-indigo-50/40 border-2 border-indigo-100 md:border-slate-200 hover:border-indigo-400 rounded-3xl md:rounded-2xl shadow-lg md:shadow-xs hover:shadow-xl cursor-pointer transition-all active:scale-[0.98] group"
+                          >
+                            {/* Class Header & Count */}
+                            <div className="flex flex-col items-center justify-center gap-1.5 mb-6 md:mb-3 w-full border-b border-slate-100 pb-4 md:pb-2">
+                              <span className="text-xl md:text-sm font-black text-indigo-950 uppercase tracking-wider group-hover:text-indigo-600 transition-colors text-center">
+                                CLASS {clsName}
+                              </span>
+                              <span className="text-xs md:text-[10px] font-extrabold text-indigo-900 bg-indigo-100 border border-indigo-200 px-3 md:px-2 py-1 md:py-0.5 rounded-full">
+                                {classSts.length} Students Enrolled
+                              </span>
+                            </div>
+
+                            {/* Centered Metrics 2x2 Grid */}
+                            <div className="grid grid-cols-2 gap-3 md:gap-2 w-full text-xs md:text-[11px] font-bold">
+                              <div className="p-3 md:p-2 bg-rose-50 border border-rose-200 rounded-2xl md:rounded-xl flex flex-col md:flex-row items-center justify-between text-center md:text-left gap-1">
+                                <span className="text-rose-800 font-semibold text-[11px] md:text-xs">💰 Spot Fine</span>
+                                <span className="text-rose-950 font-black text-sm md:text-xs">₹{totalSpotFine}</span>
+                              </div>
+
+                              <div className="p-3 md:p-2 bg-slate-100 border border-slate-300 rounded-2xl md:rounded-xl flex flex-col md:flex-row items-center justify-between text-center md:text-left gap-1">
+                                <span className="text-slate-700 font-semibold text-[11px] md:text-xs">⬛ Black Sheet</span>
+                                <span className="text-slate-950 font-black text-sm md:text-xs">{totalBlack}</span>
+                              </div>
+
+                              <div className="p-3 md:p-2 bg-amber-50 border border-amber-200 rounded-2xl md:rounded-xl flex flex-col md:flex-row items-center justify-between text-center md:text-left gap-1">
+                                <span className="text-amber-800 font-semibold text-[11px] md:text-xs">🟨 Yellow Sheet</span>
+                                <span className="text-amber-950 font-black text-sm md:text-xs">{totalYellow}</span>
+                              </div>
+
+                              <div className="p-3 md:p-2 bg-indigo-50 border border-indigo-200 rounded-2xl md:rounded-xl flex flex-col md:flex-row items-center justify-between text-center md:text-left gap-1">
+                                <span className="text-indigo-800 font-semibold text-[11px] md:text-xs">📜 Apology</span>
+                                <span className="text-indigo-950 font-black text-sm md:text-xs">{totalApology}</span>
+                              </div>
+                            </div>
+
+                            {/* Touch Indicator / Call-to-action */}
+                            <div className="mt-6 md:mt-3 pt-3 md:pt-2 border-t border-slate-100 w-full flex items-center justify-center gap-1.5 text-xs md:text-[10px] font-extrabold text-indigo-600 group-hover:text-indigo-800">
+                              <span>Tap card to view detailed student breakdown</span>
+                              <ChevronRight className="w-4 h-4 md:w-3.5 md:h-3.5 transition-transform group-hover:translate-x-0.5" />
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* SUMMARY METRIC CARDS FOR SELECTED CLASS OR ALL */}
+                {(() => {
+                  const filteredSts = students.filter(s => {
+                    if (selectedClassForReport !== 'all' && (s.class || '').toLowerCase() !== selectedClassForReport.toLowerCase()) return false;
+                    if (classReportSearch.trim() !== '') {
+                      const q = classReportSearch.toLowerCase();
+                      return s.name.toLowerCase().includes(q) || (s.registerNumber && s.registerNumber.toString().toLowerCase().includes(q));
+                    }
+                    return true;
+                  });
+
+                  const totalSpotFine = filteredSts.reduce((acc, s) => {
+                    const edits = editingDisciplineMap[s.id] || {};
+                    return acc + (edits.spotFine !== undefined ? edits.spotFine : (s.spotFine || s.fine || 0));
+                  }, 0);
+
+                  const totalBlack = filteredSts.reduce((acc, s) => {
+                    const edits = editingDisciplineMap[s.id] || {};
+                    return acc + (edits.blackSheet !== undefined ? edits.blackSheet : (s.blackSheet || 0));
+                  }, 0);
+
+                  const totalYellow = filteredSts.reduce((acc, s) => {
+                    const edits = editingDisciplineMap[s.id] || {};
+                    return acc + (edits.yellowSheet !== undefined ? edits.yellowSheet : (s.yellowSheet || 0));
+                  }, 0);
+
+                  const totalApology = filteredSts.reduce((acc, s) => {
+                    const edits = editingDisciplineMap[s.id] || {};
+                    return acc + (edits.apologyLetter !== undefined ? edits.apologyLetter : (s.apologyLetter || 0));
+                  }, 0);
+
+                  return (
+                    <>
+                      {/* Metric Summary Banner */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-3">
+                        <div className="p-3 sm:p-3.5 bg-gradient-to-br from-rose-500/10 to-rose-600/5 border border-rose-200 rounded-2xl">
+                          <p className="text-[9px] sm:text-[10px] font-black text-rose-700 uppercase tracking-widest">Total Spot Fine</p>
+                          <p className="text-lg sm:text-2xl font-black text-rose-900 mt-1">₹{totalSpotFine}</p>
+                          <p className="text-[9px] sm:text-[10px] text-rose-600 font-medium hidden sm:block">Class Disciplinary Fine</p>
+                        </div>
+
+                        <div className="p-3 sm:p-3.5 bg-gradient-to-br from-slate-900/10 to-slate-800/5 border border-slate-300 rounded-2xl">
+                          <p className="text-[9px] sm:text-[10px] font-black text-slate-800 uppercase tracking-widest">Total Black Sheets</p>
+                          <p className="text-lg sm:text-2xl font-black text-slate-950 mt-1">{totalBlack}</p>
+                          <p className="text-[9px] sm:text-[10px] text-slate-600 font-medium hidden sm:block">Severe Disciplinary Records</p>
+                        </div>
+
+                        <div className="p-3 sm:p-3.5 bg-gradient-to-br from-amber-500/10 to-amber-600/5 border border-amber-200 rounded-2xl">
+                          <p className="text-[9px] sm:text-[10px] font-black text-amber-800 uppercase tracking-widest">Total Yellow Sheets</p>
+                          <p className="text-lg sm:text-2xl font-black text-amber-950 mt-1">{totalYellow}</p>
+                          <p className="text-[9px] sm:text-[10px] text-amber-700 font-medium hidden sm:block">Warning & Caution Records</p>
+                        </div>
+
+                        <div className="p-3 sm:p-3.5 bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 border border-indigo-200 rounded-2xl">
+                          <p className="text-[9px] sm:text-[10px] font-black text-indigo-800 uppercase tracking-widest">Total Apology Letters</p>
+                          <p className="text-lg sm:text-2xl font-black text-indigo-950 mt-1">{totalApology}</p>
+                          <p className="text-[9px] sm:text-[10px] text-indigo-700 font-medium hidden sm:block">Written Conduct Letters</p>
+                        </div>
+                      </div>
+
+                      {/* Detailed Student Disciplinary Breakdown Table */}
+                      <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-xs bg-white">
+                        <div className="p-3 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+                          <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider">
+                            Student Conduct Breakdown ({selectedClassForReport === 'all' ? 'All Classes' : `Class ${selectedClassForReport.toUpperCase()}`})
+                          </h4>
+                          <span className="text-[10px] font-extrabold text-slate-500">
+                            Showing {filteredSts.length} Students
+                          </span>
+                        </div>
+
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-left text-xs border-collapse min-w-[600px] sm:min-w-full">
+                            <thead>
+                              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 text-[10px] font-extrabold uppercase">
+                                <th className="p-2.5 text-center w-8">#</th>
+                                <th className="p-2.5">Student Name</th>
+                                <th className="p-2.5 text-center">Spot Fine (₹)</th>
+                                <th className="p-2.5 text-center">Black Sheet</th>
+                                <th className="p-2.5 text-center">Yellow Sheet</th>
+                                <th className="p-2.5 text-center">Apology Letter</th>
+                                <th className="p-2.5 text-center">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-medium">
+                              {filteredSts.length === 0 ? (
+                                <tr>
+                                  <td colSpan="7" className="p-6 text-center text-slate-400 font-bold">
+                                    No students found for the selected criteria.
+                                  </td>
+                                </tr>
+                              ) : (
+                                filteredSts.map((s, idx) => {
+                                  const edits = editingDisciplineMap[s.id] || {};
+                                  const spotFine = edits.spotFine !== undefined ? edits.spotFine : (s.spotFine || s.fine || 0);
+                                  const blackSheet = edits.blackSheet !== undefined ? edits.blackSheet : (s.blackSheet || 0);
+                                  const yellowSheet = edits.yellowSheet !== undefined ? edits.yellowSheet : (s.yellowSheet || 0);
+                                  const apologyLetter = edits.apologyLetter !== undefined ? edits.apologyLetter : (s.apologyLetter || 0);
+                                  const hasEdits = edits.spotFine !== undefined || edits.blackSheet !== undefined || edits.yellowSheet !== undefined || edits.apologyLetter !== undefined;
+
+                                  return (
+                                    <tr key={s.id} className="hover:bg-slate-50/80 transition-colors">
+                                      <td className="p-2.5 text-center font-mono text-[11px] text-slate-400 font-bold">
+                                        {idx + 1}
+                                      </td>
+                                      <td className="p-2.5">
+                                        <p className="font-extrabold text-slate-900">{s.name}</p>
+                                        <p className="text-[10px] text-slate-500 font-bold">
+                                          Class: <span className="uppercase text-indigo-700">{s.class || 'N/A'}</span> {s.registerNumber && `| Reg #${s.registerNumber}`}
+                                        </p>
+                                      </td>
+
+                                      {/* Spot Fine (₹) Input */}
+                                      <td className="p-2.5 text-center">
+                                        <div className="inline-flex items-center gap-1">
+                                          <span className="text-xs font-extrabold text-rose-700">₹</span>
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            value={spotFine}
+                                            onChange={e => handleSetStudentDisciplineFieldLocal(s.id, 'spotFine', e.target.value)}
+                                            className="w-16 py-1 px-1.5 border border-rose-200 rounded-lg text-xs font-black text-rose-900 text-center bg-rose-50/50"
+                                          />
+                                        </div>
+                                      </td>
+
+                                      {/* Black Sheet Counter */}
+                                      <td className="p-2.5 text-center">
+                                        <div className="inline-flex items-center gap-1 bg-slate-100 border border-slate-300 rounded-xl p-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'blackSheet', -1, s.blackSheet)}
+                                            className="w-6 h-6 rounded-lg bg-white hover:bg-slate-200 text-slate-800 font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
+                                          >
+                                            -
+                                          </button>
+                                          <span className="w-5 text-center font-black text-xs text-slate-950">
+                                            {blackSheet}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'blackSheet', 1, s.blackSheet)}
+                                            className="w-6 h-6 rounded-lg bg-slate-900 hover:bg-black text-white font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
+                                          >
+                                            +
+                                          </button>
+                                        </div>
+                                      </td>
+
+                                      {/* Yellow Sheet Counter */}
+                                      <td className="p-2.5 text-center">
+                                        <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-xl p-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'yellowSheet', -1, s.yellowSheet)}
+                                            className="w-6 h-6 rounded-lg bg-white hover:bg-amber-100 text-amber-900 font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
+                                          >
+                                            -
+                                          </button>
+                                          <span className="w-5 text-center font-black text-xs text-amber-950">
+                                            {yellowSheet}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'yellowSheet', 1, s.yellowSheet)}
+                                            className="w-6 h-6 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
+                                          >
+                                            +
+                                          </button>
+                                        </div>
+                                      </td>
+
+                                      {/* Apology Letter Counter */}
+                                      <td className="p-2.5 text-center">
+                                        <div className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 rounded-xl p-0.5">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'apologyLetter', -1, s.apologyLetter)}
+                                            className="w-6 h-6 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
+                                          >
+                                            -
+                                          </button>
+                                          <span className="w-5 text-center font-black text-xs text-indigo-950">
+                                            {apologyLetter}
+                                          </span>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'apologyLetter', 1, s.apologyLetter)}
+                                            className="w-6 h-6 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
+                                          >
+                                            +
+                                          </button>
+                                        </div>
+                                      </td>
+
+                                      {/* Action Button */}
+                                      <td className="p-2.5 text-center">
+                                        {hasEdits ? (
+                                          <button
+                                            type="button"
+                                            onClick={() => handleSaveDisciplineChanges(s.id)}
+                                            disabled={isSavingDiscipline}
+                                            className="py-1 px-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-[10px] font-black uppercase tracking-wider shadow-xs animate-pulse"
+                                          >
+                                            Save
+                                          </button>
+                                        ) : (
+                                          <span className="text-[10px] text-slate-400 font-bold">Synced</span>
+                                        )}
+                                      </td>
+                                    </tr>
+                                  );
+                                })
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+
+              </div>
+
+              {/* Footer */}
+              <div className="p-3 sm:p-4 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setShowClassReportModal(false)}
+                  className="py-2 px-5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-extrabold"
+                >
+                  Close
                 </button>
               </div>
             </div>
