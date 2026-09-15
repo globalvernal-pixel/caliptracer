@@ -2470,6 +2470,49 @@ ${selectedStudentSummaries.join('\n')}`;
   const [editingDisciplineMap, setEditingDisciplineMap] = useState({}); // studentId -> { blackSheet, yellowSheet, apologyLetter, spotFine }
   const [isSavingDiscipline, setIsSavingDiscipline] = useState(false);
 
+  // Helper calculations to include existing ineligible reasons, fines, and direct counts across all modules
+  const getStudentSpotFine = (s, editMap = editingDisciplineMap) => {
+    if (!s) return 0;
+    const edits = editMap[s.id] || {};
+    if (edits.spotFine !== undefined) return Number(edits.spotFine) || 0;
+    return Number(s.spotFine) || Number(s.fine) || 0;
+  };
+
+  const getStudentBlackSheet = (s, editMap = editingDisciplineMap) => {
+    if (!s) return 0;
+    const edits = editMap[s.id] || {};
+    if (edits.blackSheet !== undefined) return Number(edits.blackSheet) || 0;
+    const direct = Number(s.blackSheet) || 0;
+    if (direct > 0) return direct;
+    
+    // Check if student is marked ineligible or ineligibleReason mentions Black Sheet / Misconduct / Malpractice
+    const reason = (s.ineligibleReason || '').toLowerCase();
+    const isIneligibleBlack = Boolean(s.ineligible) || reason.includes('black') || reason.includes('misconduct') || reason.includes('malpractice');
+    return isIneligibleBlack ? 1 : 0;
+  };
+
+  const getStudentYellowSheet = (s, editMap = editingDisciplineMap) => {
+    if (!s) return 0;
+    const edits = editMap[s.id] || {};
+    if (edits.yellowSheet !== undefined) return Number(edits.yellowSheet) || 0;
+    const direct = Number(s.yellowSheet) || 0;
+    if (direct > 0) return direct;
+    
+    const reason = (s.ineligibleReason || '').toLowerCase();
+    return reason.includes('yellow') ? 1 : 0;
+  };
+
+  const getStudentApologyLetter = (s, editMap = editingDisciplineMap) => {
+    if (!s) return 0;
+    const edits = editMap[s.id] || {};
+    if (edits.apologyLetter !== undefined) return Number(edits.apologyLetter) || 0;
+    const direct = Number(s.apologyLetter) || 0;
+    if (direct > 0) return direct;
+    
+    const reason = (s.ineligibleReason || '').toLowerCase();
+    return reason.includes('apology') ? 1 : 0;
+  };
+
   // Helper to handle incrementing/decrementing discipline counters locally
   const handleUpdateStudentDisciplineLocal = (studentId, field, delta, currentVal = 0) => {
     setEditingDisciplineMap(prev => {
@@ -2504,19 +2547,32 @@ ${selectedStudentSummaries.join('\n')}`;
     setIsSavingDiscipline(true);
     try {
       const st = students.find(s => s.id === studentId);
+      const finalBlack = edits.blackSheet !== undefined ? edits.blackSheet : getStudentBlackSheet(st);
+      const finalYellow = edits.yellowSheet !== undefined ? edits.yellowSheet : getStudentYellowSheet(st);
+      const finalApology = edits.apologyLetter !== undefined ? edits.apologyLetter : getStudentApologyLetter(st);
+      const finalSpotFine = edits.spotFine !== undefined ? edits.spotFine : getStudentSpotFine(st);
+
       const res = await fetch(`/api/students/${studentId}/discipline`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          blackSheet: edits.blackSheet !== undefined ? edits.blackSheet : st?.blackSheet,
-          yellowSheet: edits.yellowSheet !== undefined ? edits.yellowSheet : st?.yellowSheet,
-          apologyLetter: edits.apologyLetter !== undefined ? edits.apologyLetter : st?.apologyLetter,
-          spotFine: edits.spotFine !== undefined ? edits.spotFine : (st?.spotFine || st?.fine)
+          blackSheet: finalBlack,
+          yellowSheet: finalYellow,
+          apologyLetter: finalApology,
+          spotFine: finalSpotFine
         })
       });
       if (res.ok) {
         const updatedStudent = await res.json();
-        setStudents(prev => prev.map(s => s.id === studentId ? updatedStudent : s));
+        setStudents(prev => prev.map(s => s.id === studentId ? {
+          ...s,
+          ...updatedStudent,
+          spotFine: finalSpotFine,
+          fine: finalSpotFine,
+          blackSheet: finalBlack,
+          yellowSheet: finalYellow,
+          apologyLetter: finalApology
+        } : s));
         // clear local edit map for this student
         setEditingDisciplineMap(prev => {
           const next = { ...prev };
@@ -2539,11 +2595,10 @@ ${selectedStudentSummaries.join('\n')}`;
     const classStudents = students.filter(s => targetClass === 'all' || (s.class || '').toLowerCase() === targetClass.toLowerCase());
     const headers = ['#', 'Student Name', 'Class', 'Register No', 'Spot Fine (INR)', 'Black Sheets', 'Yellow Sheets', 'Apology Letters', 'Total Stars', 'Total Tallies'];
     const rows = classStudents.map((s, idx) => {
-      const edits = editingDisciplineMap[s.id] || {};
-      const spotFine = edits.spotFine !== undefined ? edits.spotFine : (s.spotFine || s.fine || 0);
-      const blackSheet = edits.blackSheet !== undefined ? edits.blackSheet : (s.blackSheet || 0);
-      const yellowSheet = edits.yellowSheet !== undefined ? edits.yellowSheet : (s.yellowSheet || 0);
-      const apologyLetter = edits.apologyLetter !== undefined ? edits.apologyLetter : (s.apologyLetter || 0);
+      const spotFine = getStudentSpotFine(s);
+      const blackSheet = getStudentBlackSheet(s);
+      const yellowSheet = getStudentYellowSheet(s);
+      const apologyLetter = getStudentApologyLetter(s);
       return [
         idx + 1,
         `"${s.name}"`,
@@ -13733,10 +13788,10 @@ ${selectedStudentSummaries.join('\n')}`;
                     <div className="flex flex-col h-[65vh] md:h-auto overflow-y-scroll md:overflow-y-visible snap-y snap-mandatory scroll-smooth gap-4 md:grid md:grid-cols-3 lg:grid-cols-4">
                       {Array.from(new Set((students || []).map(s => (s?.class || '').trim().toUpperCase()).filter(Boolean))).sort().map(clsName => {
                         const classSts = students.filter(s => (s.class || '').trim().toUpperCase() === clsName);
-                        const totalSpotFine = classSts.reduce((acc, s) => acc + (s.spotFine || s.fine || 0), 0);
-                        const totalBlack = classSts.reduce((acc, s) => acc + (s.blackSheet || 0), 0);
-                        const totalYellow = classSts.reduce((acc, s) => acc + (s.yellowSheet || 0), 0);
-                        const totalApology = classSts.reduce((acc, s) => acc + (s.apologyLetter || 0), 0);
+                        const totalSpotFine = classSts.reduce((acc, s) => acc + getStudentSpotFine(s), 0);
+                        const totalBlack = classSts.reduce((acc, s) => acc + getStudentBlackSheet(s), 0);
+                        const totalYellow = classSts.reduce((acc, s) => acc + getStudentYellowSheet(s), 0);
+                        const totalApology = classSts.reduce((acc, s) => acc + getStudentApologyLetter(s), 0);
 
                         return (
                           <div
@@ -13800,25 +13855,10 @@ ${selectedStudentSummaries.join('\n')}`;
                     return true;
                   });
 
-                  const totalSpotFine = filteredSts.reduce((acc, s) => {
-                    const edits = editingDisciplineMap[s.id] || {};
-                    return acc + (edits.spotFine !== undefined ? edits.spotFine : (s.spotFine || s.fine || 0));
-                  }, 0);
-
-                  const totalBlack = filteredSts.reduce((acc, s) => {
-                    const edits = editingDisciplineMap[s.id] || {};
-                    return acc + (edits.blackSheet !== undefined ? edits.blackSheet : (s.blackSheet || 0));
-                  }, 0);
-
-                  const totalYellow = filteredSts.reduce((acc, s) => {
-                    const edits = editingDisciplineMap[s.id] || {};
-                    return acc + (edits.yellowSheet !== undefined ? edits.yellowSheet : (s.yellowSheet || 0));
-                  }, 0);
-
-                  const totalApology = filteredSts.reduce((acc, s) => {
-                    const edits = editingDisciplineMap[s.id] || {};
-                    return acc + (edits.apologyLetter !== undefined ? edits.apologyLetter : (s.apologyLetter || 0));
-                  }, 0);
+                  const totalSpotFine = filteredSts.reduce((acc, s) => acc + getStudentSpotFine(s), 0);
+                  const totalBlack = filteredSts.reduce((acc, s) => acc + getStudentBlackSheet(s), 0);
+                  const totalYellow = filteredSts.reduce((acc, s) => acc + getStudentYellowSheet(s), 0);
+                  const totalApology = filteredSts.reduce((acc, s) => acc + getStudentApologyLetter(s), 0);
 
                   return (
                     <>
@@ -13882,11 +13922,12 @@ ${selectedStudentSummaries.join('\n')}`;
                                 </tr>
                               ) : (
                                 filteredSts.map((s, idx) => {
+                                  const spotFine = getStudentSpotFine(s);
+                                  const blackSheet = getStudentBlackSheet(s);
+                                  const yellowSheet = getStudentYellowSheet(s);
+                                  const apologyLetter = getStudentApologyLetter(s);
+
                                   const edits = editingDisciplineMap[s.id] || {};
-                                  const spotFine = edits.spotFine !== undefined ? edits.spotFine : (s.spotFine || s.fine || 0);
-                                  const blackSheet = edits.blackSheet !== undefined ? edits.blackSheet : (s.blackSheet || 0);
-                                  const yellowSheet = edits.yellowSheet !== undefined ? edits.yellowSheet : (s.yellowSheet || 0);
-                                  const apologyLetter = edits.apologyLetter !== undefined ? edits.apologyLetter : (s.apologyLetter || 0);
                                   const hasEdits = edits.spotFine !== undefined || edits.blackSheet !== undefined || edits.yellowSheet !== undefined || edits.apologyLetter !== undefined;
 
                                   return (
@@ -13920,7 +13961,7 @@ ${selectedStudentSummaries.join('\n')}`;
                                         <div className="inline-flex items-center gap-1 bg-slate-100 border border-slate-300 rounded-xl p-0.5">
                                           <button
                                             type="button"
-                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'blackSheet', -1, s.blackSheet)}
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'blackSheet', -1, blackSheet)}
                                             className="w-6 h-6 rounded-lg bg-white hover:bg-slate-200 text-slate-800 font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
                                           >
                                             -
@@ -13930,7 +13971,7 @@ ${selectedStudentSummaries.join('\n')}`;
                                           </span>
                                           <button
                                             type="button"
-                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'blackSheet', 1, s.blackSheet)}
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'blackSheet', 1, blackSheet)}
                                             className="w-6 h-6 rounded-lg bg-slate-900 hover:bg-black text-white font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
                                           >
                                             +
@@ -13943,7 +13984,7 @@ ${selectedStudentSummaries.join('\n')}`;
                                         <div className="inline-flex items-center gap-1 bg-amber-50 border border-amber-200 rounded-xl p-0.5">
                                           <button
                                             type="button"
-                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'yellowSheet', -1, s.yellowSheet)}
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'yellowSheet', -1, yellowSheet)}
                                             className="w-6 h-6 rounded-lg bg-white hover:bg-amber-100 text-amber-900 font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
                                           >
                                             -
@@ -13953,7 +13994,7 @@ ${selectedStudentSummaries.join('\n')}`;
                                           </span>
                                           <button
                                             type="button"
-                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'yellowSheet', 1, s.yellowSheet)}
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'yellowSheet', 1, yellowSheet)}
                                             className="w-6 h-6 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
                                           >
                                             +
@@ -13966,7 +14007,7 @@ ${selectedStudentSummaries.join('\n')}`;
                                         <div className="inline-flex items-center gap-1 bg-indigo-50 border border-indigo-200 rounded-xl p-0.5">
                                           <button
                                             type="button"
-                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'apologyLetter', -1, s.apologyLetter)}
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'apologyLetter', -1, apologyLetter)}
                                             className="w-6 h-6 rounded-lg bg-white hover:bg-indigo-100 text-indigo-900 font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
                                           >
                                             -
@@ -13976,7 +14017,7 @@ ${selectedStudentSummaries.join('\n')}`;
                                           </span>
                                           <button
                                             type="button"
-                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'apologyLetter', 1, s.apologyLetter)}
+                                            onClick={() => handleUpdateStudentDisciplineLocal(s.id, 'apologyLetter', 1, apologyLetter)}
                                             className="w-6 h-6 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white font-black text-xs flex items-center justify-center shadow-xs active:scale-90"
                                           >
                                             +
