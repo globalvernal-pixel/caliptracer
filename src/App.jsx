@@ -6369,46 +6369,71 @@ ${selectedStudentSummaries.join('\n')}`;
                       </div>
                     ) : (
                       <div className="flex flex-col items-center gap-3 animate-fade-in w-full h-full">
-                        <div className="flex items-center justify-between w-full mb-2 shrink-0">
+                        <div className="flex flex-wrap items-center justify-between w-full mb-2 gap-2 shrink-0">
                           <div className="flex items-center gap-2">
                             <span className="text-xl">📊</span>
                             <h3 className="text-sm font-extrabold text-[#1A365D]">Student Summary</h3>
+                            {isScoreFilterActive && (
+                              <div className="flex items-center gap-1.5 bg-cyan-50 border border-cyan-300 text-cyan-800 px-2.5 py-1 rounded-lg text-[10px] font-bold shadow-xs">
+                                <span>Filtered ({scoreFilterFromDate || 'Start'} to {scoreFilterToDate || 'Today'})</span>
+                                <button
+                                  onClick={handleResetScoreFilter}
+                                  className="text-rose-600 hover:underline font-extrabold ml-1"
+                                >
+                                  ✕
+                                </button>
+                              </div>
+                            )}
                           </div>
                           <div className="flex gap-2">
                             <button
                               onClick={() => {
+                                fetchScoreSheetHistory();
+                                setShowScoreFilterModal(true);
+                              }}
+                              className={`px-3 py-1.5 text-[10px] uppercase font-bold rounded-lg shadow-xs transition-all flex items-center gap-1.5 ${
+                                isScoreFilterActive
+                                  ? 'bg-cyan-600 hover:bg-cyan-700 text-white ring-2 ring-cyan-300'
+                                  : 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                              }`}
+                              title="Filter Score Sheet by Date Range"
+                            >
+                              <Filter className="w-3.5 h-3.5 shrink-0" />
+                              <span>Filter {isScoreFilterActive ? '✓' : ''}</span>
+                            </button>
+                            <button
+                              onClick={() => {
+                                if (isScoreFilterActive) {
+                                  setIrFromDate(scoreFilterFromDate);
+                                  setIrToDate(scoreFilterToDate);
+                                }
                                 setIrAssignedStudents(assignedStudents);
                                 setSelectedIRStudentIds(assignedStudents.map(s => s.id));
                                 setDateModalNextAction('IR');
                                 setShowIRDateModal(true);
                               }}
-                              className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] uppercase font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1"
+                              className="px-3 py-1.5 bg-blue-500 hover:bg-blue-600 text-white text-[10px] uppercase font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1"
                             >
                               <span className="text-sm">📄</span> (IR) Individual Report
                             </button>
                             <button
                               onClick={() => {
-                                const csvLines = ["Class,Name,Star,Tally,Total,Grade,N&O Tally,N&O Total,N&O Grade,Diary Tally,Fine,Attitude Total,Attitude Grade"];
+                                const csvLines = ["Class,Name,Star,Tally,Total,Grade,N&O Tally,N&O Total,N&O Grade,Diary Tally,Sheets,Fine,Attitude Total,Attitude Grade"];
                                 assignedStudents.forEach(s => {
-                                  const total1 = ((Number(s.star) || 0) * 2) - (Number(s.tally) || 0);
-                                  const grade = calculateGrade(total1);
-                                  const attitudeTotal = ((Number(s.diaryTally) || 0) * -0.5) + (getFineCount(s) * -1.5) + (Number(s.sheetTally) || 0);
-                                  const noIncidents = getNOIncidents(s);
-                                  const noTotal = -noIncidents;
-                                  const noGrade = calculateNOGrade(noTotal);
-                                  csvLines.push(`${s.class},"${s.name.replace(/"/g, '""')}",${s.star || 0},${s.tally || 0},${total1},${grade},${s.neatAndOrderTally || 0},${noTotal},${noGrade},${s.diaryTally || 0},${s.fine || 0},${attitudeTotal},${calculateAttitudeGrade(attitudeTotal)}`);
+                                  const metrics = getFilteredStudentMetrics(s);
+                                  csvLines.push(`${s.class},"${s.name.replace(/"/g, '""')}",${metrics.star},${metrics.tally},${metrics.total},${metrics.grade},${metrics.noTally},${metrics.noTotal},${metrics.noGrade},${metrics.diaryTally},${metrics.sheetTally},${metrics.fine},${metrics.attitudeTotal},${metrics.attitudeGrade}`);
                                 });
                                 const csvContent = csvLines.join('\n');
                                 const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
                                 const url = URL.createObjectURL(blob);
                                 const link = document.createElement("a");
                                 link.setAttribute("href", url);
-                                link.setAttribute("download", `${mentor.name}_summary.csv`);
+                                link.setAttribute("download", `${mentor.name}_${isScoreFilterActive ? 'filtered_' : ''}summary.csv`);
                                 document.body.appendChild(link);
                                 link.click();
                                 document.body.removeChild(link);
                               }}
-                              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] uppercase font-bold rounded-lg shadow-sm transition-colors flex items-center gap-1"
+                              className="px-3 py-1.5 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] uppercase font-bold rounded-lg shadow-xs transition-colors flex items-center gap-1"
                             >
                               <span className="text-sm">📥</span> Download Excel
                             </button>
@@ -6439,28 +6464,27 @@ ${selectedStudentSummaries.join('\n')}`;
                               </thead>
                               <tbody className="divide-y divide-slate-100">
                                 {assignedStudents.length > 0 ? assignedStudents.map(student => {
-                                  const total1 = ((Number(student.star) || 0) * 2) - (Number(student.tally) || 0);
-                                  const attitudeTotal = ((Number(student.diaryTally) || 0) * -0.5) + (getFineCount(student) * -1.5) + (Number(student.sheetTally) || 0);
+                                  const metrics = getFilteredStudentMetrics(student);
                                   return (
-                                    <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                                    <tr key={student.id} className={`hover:bg-slate-50 transition-colors ${metrics.isFiltered ? 'bg-cyan-50/20' : ''}`}>
                                       <td className="p-3 text-center font-bold text-[#1A365D] uppercase">{student.class}</td>
                                       <td className="p-3 font-bold text-slate-700 flex items-center justify-center gap-1.5 h-[45px]">
                                         {student.ineligible && <div className="w-2 h-2 rounded-full bg-rose-600 animate-pulse" title={`Ineligible: ${student.ineligibleReason || 'No reason'}`} />}
                                         {student.name}
                                       </td>
-                                      <td className="p-3 text-center font-bold text-amber-600">{student.star || 0}</td>
-                                      <td className="p-3 text-center font-bold text-sky-600">{student.tally || 0}</td>
-                                      <td className="p-3 text-center font-extrabold text-[#1A365D]">{total1}</td>
-                                      <td className="p-3 text-center font-bold text-purple-600">{calculateGrade(total1)}</td>
-                                      <td className="p-3 text-center font-bold text-orange-500">{student.neatAndOrderTally || 0}</td>
-                                      <td className="p-3 text-center font-extrabold text-[#1A365D]">{-getNOIncidents(student)}</td>
-                                      <td className="p-3 text-center font-bold text-orange-600">{calculateNOGrade(-getNOIncidents(student))}</td>
-                                      <td className="p-3 text-center font-bold text-sky-500">{student.diaryTally || 0}</td>
-                                      <td className="p-3 text-center font-bold text-cyan-500">{student.sheetTally || 0}</td>
-                                      <td className="p-3 text-center font-bold text-rose-600">{getFineCount(student)}</td>
-                                      <td className="p-3 text-center font-extrabold text-[#1A365D]">{attitudeTotal}</td>
+                                      <td className="p-3 text-center font-bold text-amber-600">{metrics.star}</td>
+                                      <td className="p-3 text-center font-bold text-sky-600">{metrics.tally}</td>
+                                      <td className="p-3 text-center font-extrabold text-[#1A365D]">{metrics.total}</td>
+                                      <td className="p-3 text-center font-bold text-purple-600">{metrics.grade}</td>
+                                      <td className="p-3 text-center font-bold text-orange-500">{metrics.noTally}</td>
+                                      <td className="p-3 text-center font-extrabold text-[#1A365D]">{metrics.noTotal}</td>
+                                      <td className="p-3 text-center font-bold text-orange-600">{metrics.noGrade}</td>
+                                      <td className="p-3 text-center font-bold text-sky-500">{metrics.diaryTally}</td>
+                                      <td className="p-3 text-center font-bold text-cyan-500">{metrics.sheetTally}</td>
+                                      <td className="p-3 text-center font-bold text-rose-600">{metrics.fine}</td>
+                                      <td className="p-3 text-center font-extrabold text-[#1A365D]">{metrics.attitudeTotal}</td>
                                       <td className="p-3 text-center font-bold text-indigo-600">
-                                        {calculateAttitudeGrade(attitudeTotal)}
+                                        {metrics.attitudeGrade}
                                       </td>
                                     </tr>
                                   );
