@@ -1310,15 +1310,26 @@ app.post('/api/phone-passes/batch', async (req, res) => {
 // ==================== INELIGIBLE RECORDS ENDPOINTS ====================
 app.get('/api/ineligible', async (req, res) => {
   try {
-    // Auto-update expired records to status EXPIRED without deleting them
+    // 1. Auto-update expired records to status EXPIRED without deleting them
     await pool.query("UPDATE ineligible_records SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND end_date <= CURRENT_TIMESTAMP");
 
-    // Sync students table ineligible flag for students with no remaining active records
+    // 2. Auto-populate ineligible_records for any students in `students` table marked ineligible = TRUE who don't have an active record yet
     await pool.query(`
-      UPDATE students s SET ineligible = FALSE, ineligible_reason = '', ineligible_date = NULL
-      WHERE ineligible = TRUE AND NOT EXISTS (
+      INSERT INTO ineligible_records (id, student_id, student_name, student_class, reason, start_date, end_date, status)
+      SELECT 
+        'inelig-auto-' || s.id || '-' || FLOOR(EXTRACT(EPOCH FROM NOW())),
+        s.id,
+        s.name,
+        COALESCE(s.class, ''),
+        COALESCE(NULLIF(s.ineligible_reason, ''), 'Black Sheet / Misconduct'),
+        COALESCE(s.ineligible_date, CURRENT_TIMESTAMP),
+        COALESCE(s.ineligible_date, CURRENT_TIMESTAMP) + INTERVAL '30 days',
+        'ACTIVE'
+      FROM students s
+      WHERE s.ineligible = TRUE
+      AND NOT EXISTS (
         SELECT 1 FROM ineligible_records ir WHERE ir.student_id = s.id AND ir.status = 'ACTIVE' AND ir.end_date > CURRENT_TIMESTAMP
-      )
+      );
     `);
 
     const result = await pool.query(

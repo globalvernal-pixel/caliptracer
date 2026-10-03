@@ -1487,9 +1487,9 @@ export default function App() {
     if (expiredRecords.length > 0) {
       console.log(`Auto-expiring ${expiredRecords.length} ineligible student records after 1 month.`);
       expiredRecords.forEach(rec => {
-        fetch(`/api/ineligible/${rec.id}`, { method: 'DELETE' })
+        fetch(`/api/ineligible/${rec.id}?action=expire`, { method: 'DELETE' })
           .then(() => fetchIneligibleRecords())
-          .catch(err => console.error("Error auto-deleting expired record:", err));
+          .catch(err => console.error("Error auto-expiring record:", err));
       });
     }
   }, [ineligibleRecords]);
