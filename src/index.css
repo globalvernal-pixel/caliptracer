@@ -1,0 +1,166 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #F8F9FA;
+    color: #333333;
+    font-family: 'Inter', 'Poppins', system-ui, sans-serif;
+    background-image: 
+      radial-gradient(at 0% 0%, rgba(26, 54, 93, 0.03) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, rgba(2, 132, 199, 0.03) 0px, transparent 50%);
+    background-attachment: fixed;
+  }
+}
+
+/* Custom Scrollbars for Light Theme */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F1F5F9;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 10px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94A3B8;
+}
+
+/* Remove Arrows from Number Inputs */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
+/* Splash Screen Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes logoIntro {
+  0% {
+    opacity: 0;
+    transform: scale(2.5);
+    filter: blur(16px);
+  }
+  65% {
+    opacity: 1;
+    transform: scale(0.94);
+    filter: blur(0);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+    filter: blur(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes fillProgress {
+  from {
+    width: 0%;
+  }
+  to {
+    width: 100%;
+  }
+}
+
+@keyframes fadeOutSplash {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: blur(0);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(0.92);
+    filter: blur(8px);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-logo-intro {
+  animation: logoIntro 0.3s cubic-bezier(0.25, 1, 0.5, 1) forwards;
+}
+
+.animate-slide-up-1 {
+  opacity: 0;
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards;
+}
+
+.animate-slide-up-2 {
+  opacity: 0;
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) 0.1s forwards;
+}
+
+.animate-slide-up-3 {
+  opacity: 0;
+  animation: slideUp 0.2s cubic-bezier(0.16, 1, 0.3, 1) 0.15s forwards;
+}
+
+.animate-splash-exit {
+  animation: fadeOutSplash 0.2s cubic-bezier(0.16, 1, 0.3, 1) 0.2s forwards;
+}
+
+/* Hide scrollbar for mentor switch */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Mobile Touch & Screenshot Export Styling */
+.mobile-card-export {
+  box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.2);
+  border-radius: 24px;
+}
+
+@media (max-width: 640px) {
+  /* Prevent horizontal scroll on mobile viewport */
+  body {
+    overflow-x: hidden;
+  }
+  
+  /* Touch target sizes */
+  button, input, select {
+    min-height: 40px;
+  }
+
+  .mobile-full-modal {
+    width: 95% !important;
+    max-height: 90vh !important;
+    margin: auto !important;
+  }
+}
+
