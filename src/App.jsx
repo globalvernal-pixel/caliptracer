@@ -28,6 +28,7 @@ import {
   Table,
   Lock,
   Download,
+  Filter,
   GraduationCap,
   School,
   BookOpen,
@@ -3518,6 +3519,42 @@ ${selectedStudentSummaries.join('\n')}`;
   const [activityClassFilter, setActivityClassFilter] = useState('ALL');
   const [activitySearchQuery, setActivitySearchQuery] = useState('');
   const [activityEditModal, setActivityEditModal] = useState(null);
+
+  // Score Sheet Date Range Filter States
+  const [showScoreFilterModal, setShowScoreFilterModal] = useState(false);
+  const [scoreFilterFromDate, setScoreFilterFromDate] = useState('');
+  const [scoreFilterToDate, setScoreFilterToDate] = useState('');
+  const [scoreSheetHistoryLogs, setScoreSheetHistoryLogs] = useState([]);
+  const [scoreSheetHistoryLoading, setScoreSheetHistoryLoading] = useState(false);
+
+  const isScoreFilterActive = Boolean(scoreFilterFromDate || scoreFilterToDate);
+
+  const fetchScoreSheetHistory = async () => {
+    if (scoreSheetHistoryLogs.length > 0 && !scoreSheetHistoryLoading) return;
+    try {
+      setScoreSheetHistoryLoading(true);
+      const res = await fetch('/api/history');
+      if (res.ok) {
+        const data = await res.json();
+        setScoreSheetHistoryLogs(data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch score sheet history logs:", err);
+    } finally {
+      setScoreSheetHistoryLoading(false);
+    }
+  };
+
+  const handleApplyScoreFilter = async () => {
+    await fetchScoreSheetHistory();
+    setShowScoreFilterModal(false);
+  };
+
+  const handleResetScoreFilter = () => {
+    setScoreFilterFromDate('');
+    setScoreFilterToDate('');
+    setShowScoreFilterModal(false);
+  };
   const [showAddActivityModal, setShowAddActivityModal] = useState(false);
   const [selectedActivityIds, setSelectedActivityIds] = useState([]);
   const [newActivityForm, setNewActivityForm] = useState({
@@ -3866,6 +3903,81 @@ ${selectedStudentSummaries.join('\n')}`;
     if (s.history_fine_count !== undefined && Number(s.history_fine_count) > 0) return Number(s.history_fine_count);
     if (Number(s.fine) > 0 || Number(s.spotFine) > 0) return 1;
     return 0;
+  };
+
+  const getFilteredStudentMetrics = (student) => {
+    const isFiltered = Boolean(scoreFilterFromDate || scoreFilterToDate);
+    if (!isFiltered) {
+      const computedTotal = calculateTotalScore(student.star, student.tally);
+      const finalTotal = (student.customTotal !== undefined && student.customTotal !== null && student.customTotal !== '')
+        ? Number(student.customTotal)
+        : computedTotal;
+      const computedGrade = calculateGrade(finalTotal);
+      const finalGrade = (student.customGrade && student.customGrade.trim())
+        ? student.customGrade.trim().toUpperCase()
+        : computedGrade;
+      const noIncidents = getNOIncidents(student);
+      const noTotal = -noIncidents;
+      const noGrade = calculateNOGrade(noTotal);
+      const attitudeTotal = ((Number(student.diaryTally) || 0) * -0.5) + (getFineCount(student) * -1.5) + (Number(student.sheetTally) || 0);
+      const attitudeGrade = calculateAttitudeGrade(attitudeTotal);
+
+      return {
+        star: (student.star || 0) + (student.diaryStar || 0),
+        tally: student.tally || 0,
+        total: finalTotal,
+        grade: finalGrade,
+        noTally: student.neatAndOrderTally || 0,
+        noTotal: noTotal,
+        noGrade: noGrade,
+        diaryTally: student.diaryTally || 0,
+        sheetTally: student.sheetTally || 0,
+        fine: getFineCount(student),
+        attitudeTotal: attitudeTotal,
+        attitudeGrade: attitudeGrade,
+        isFiltered: false
+      };
+    }
+
+    const studentLogs = (scoreSheetHistoryLogs || []).filter(log => {
+      if (log.student_id !== student.id) return false;
+      const logDate = new Date(log.date).toISOString().split('T')[0];
+      return (!scoreFilterFromDate || logDate >= scoreFilterFromDate) && (!scoreFilterToDate || logDate <= scoreFilterToDate);
+    });
+
+    let dynStar = 0, dynTally = 0, dynFine = 0, dynNo = 0, dynDiary = 0, dynSheet = 0;
+    studentLogs.forEach(log => {
+      const type = (log.event_type || '').toLowerCase();
+      if (type === 'star' || type === 'morning bliss') dynStar += Math.abs(log.amount);
+      else if (type === 'tally') dynTally += Math.abs(log.amount);
+      else if (type === 'spot fine' || type === 'room fine' || type === 'spotfine' || type === 'roomfine' || type === 'fine') dynFine += 1;
+      else if (type === 'n&o tally' || type === 'n&o') dynNo += Math.abs(log.amount);
+      else if (type === 'diary tally' || type === 'diary' || type === 'diary_tally') dynDiary += Math.abs(log.amount);
+      else if (type.includes('sheet') || type === 'apology') dynSheet += Number(log.amount);
+    });
+
+    const finalTotal = calculateTotalScore(dynStar, dynTally);
+    const finalGrade = calculateGrade(finalTotal);
+    const noTotal = -dynNo;
+    const noGrade = calculateNOGrade(noTotal);
+    const attitudeTotal = (dynDiary * -0.5) + (dynFine * -1.5) + dynSheet;
+    const attitudeGrade = calculateAttitudeGrade(attitudeTotal);
+
+    return {
+      star: dynStar,
+      tally: dynTally,
+      total: finalTotal,
+      grade: finalGrade,
+      noTally: dynNo,
+      noTotal: noTotal,
+      noGrade: noGrade,
+      diaryTally: dynDiary,
+      sheetTally: dynSheet,
+      fine: dynFine,
+      attitudeTotal: attitudeTotal,
+      attitudeGrade: attitudeGrade,
+      isFiltered: true
+    };
   };
 
   // General field updater to support text descriptions
@@ -4304,7 +4416,9 @@ ${selectedStudentSummaries.join('\n')}`;
     }
 
     const wb = XLSX.utils.book_new();
-    const isDateFiltered = Boolean(irFromDate || irToDate);
+    const effectiveFromDate = irFromDate || scoreFilterFromDate;
+    const effectiveToDate = irToDate || scoreFilterToDate;
+    const isDateFiltered = Boolean(effectiveFromDate || effectiveToDate);
 
     downloadSelectedClasses.forEach(clsName => {
       const clsStudents = students.filter(s => (s.class || '').trim().toLowerCase() === clsName.trim().toLowerCase());
@@ -4313,7 +4427,7 @@ ${selectedStudentSummaries.join('\n')}`;
           const sLogs = historyLogs.filter(log => {
             if (log.student_id !== s.id) return false;
             const logDate = new Date(log.date).toISOString().split('T')[0];
-            return (!irFromDate || logDate >= irFromDate) && (!irToDate || logDate <= irToDate);
+            return (!effectiveFromDate || logDate >= effectiveFromDate) && (!effectiveToDate || logDate <= effectiveToDate);
           });
 
           let dynStar = 0, dynTally = 0, dynFine = 0, dynNo = 0, dynDiary = 0, dynSheet = 0;
@@ -8955,9 +9069,29 @@ ${selectedStudentSummaries.join('\n')}`;
                 </div>
 
                 {/* Action Buttons (RBAC Filtered) */}
-                <div className={`grid ${isAdminAuthenticated ? 'grid-cols-3 sm:grid-cols-6' : 'grid-cols-3'} gap-2`}>
+                <div className={`grid ${isAdminAuthenticated ? 'grid-cols-4 sm:grid-cols-7' : 'grid-cols-4'} gap-2`}>
                   <button
                     onClick={() => {
+                      fetchScoreSheetHistory();
+                      setShowScoreFilterModal(true);
+                    }}
+                    className={`flex items-center justify-center gap-1.5 py-2.5 px-1 rounded-xl font-extrabold text-[11px] shadow-xs active:scale-[0.98] transition-all ${
+                      isScoreFilterActive
+                        ? 'bg-cyan-500 hover:bg-cyan-600 text-white ring-2 ring-cyan-300'
+                        : 'bg-cyan-600 hover:bg-cyan-700 text-white'
+                    }`}
+                    title="Filter Score Sheet by Date Range"
+                  >
+                    <Filter className="w-3.5 h-3.5 shrink-0" />
+                    Filter {isScoreFilterActive ? '✓' : ''}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      if (isScoreFilterActive) {
+                        setIrFromDate(scoreFilterFromDate);
+                        setIrToDate(scoreFilterToDate);
+                      }
                       setDownloadSelectedClasses(CLASSES);
                       setDateModalNextAction('ADMIN_REPORT');
                       setShowIRDateModal(true);
@@ -9027,8 +9161,8 @@ ${selectedStudentSummaries.join('\n')}`;
                   <table className="w-full border-collapse text-left text-xs font-sans">
                     <thead className="sticky top-0 z-20 bg-slate-100 shadow-xs">
                       {/* Outer Class Header Row */}
-                      <tr className="border-b border-slate-200 bg-slate-100 text-center font-bold">
-                        <th className="border-r border-slate-200 p-2 text-slate-400 font-mono text-[10px] w-8 bg-slate-100 sticky top-0 z-20">
+                      <tr className="border-b border-slate-200 bg-slate-100 font-bold">
+                        <th className="border-r border-slate-200 p-2 text-slate-400 font-mono text-[10px] w-8 bg-slate-100 sticky top-0 z-20 text-center">
                           <input
                             type="checkbox"
                             className="cursor-pointer"
@@ -9042,9 +9176,35 @@ ${selectedStudentSummaries.join('\n')}`;
                             }}
                           />
                         </th>
-                        <th className="border-r border-slate-200 p-2 text-slate-400 font-mono text-[10px] w-8 bg-slate-100 sticky top-0 z-20">#</th>
+                        <th className="border-r border-slate-200 p-2 text-slate-400 font-mono text-[10px] w-8 bg-slate-100 sticky top-0 z-20 text-center">#</th>
                         <th colSpan="13" className="p-2 text-[#1A365D] font-extrabold uppercase tracking-widest text-xs bg-[#1A365D]/10 sticky top-0 z-20">
-                          Class {adminClass.toUpperCase()}
+                          <div className="flex items-center justify-between px-2">
+                            <div className="flex items-center gap-2 normal-case tracking-normal">
+                              <button
+                                onClick={() => {
+                                  fetchScoreSheetHistory();
+                                  setShowScoreFilterModal(true);
+                                }}
+                                className={`flex items-center gap-1.5 px-3 py-1 rounded-lg font-extrabold text-[11px] shadow-xs transition-all ${
+                                  isScoreFilterActive
+                                    ? 'bg-cyan-600 text-white hover:bg-cyan-700 ring-2 ring-cyan-300'
+                                    : 'bg-white text-cyan-800 hover:bg-cyan-50 border border-cyan-300'
+                                }`}
+                              >
+                                <Filter className="w-3.5 h-3.5" style={{ color: isScoreFilterActive ? '#ffffff' : '#0891b2' }} />
+                                <span>{isScoreFilterActive ? `Filtered: ${scoreFilterFromDate || 'Start'} to ${scoreFilterToDate || 'Today'}` : 'Filter Date Range'}</span>
+                              </button>
+                              {isScoreFilterActive && (
+                                <button
+                                  onClick={handleResetScoreFilter}
+                                  className="text-[10px] text-rose-600 hover:underline font-bold bg-rose-50 px-2 py-1 rounded-md border border-rose-200"
+                                >
+                                  Clear
+                                </button>
+                              )}
+                            </div>
+                            <span>CLASS {adminClass.toUpperCase()}</span>
+                          </div>
                         </th>
                       </tr>
 
@@ -9070,17 +9230,10 @@ ${selectedStudentSummaries.join('\n')}`;
                     <tbody className="divide-y divide-slate-100">
                       {adminClassStudents.length > 0 ? (
                         adminClassStudents.map((student, idx) => {
-                          const computedTotal = calculateTotalScore(student.star, student.tally);
-                          const finalTotal = (student.customTotal !== undefined && student.customTotal !== null && student.customTotal !== '')
-                            ? Number(student.customTotal)
-                            : computedTotal;
-                          const computedGrade = calculateGrade(finalTotal);
-                          const finalGrade = (student.customGrade && student.customGrade.trim())
-                            ? student.customGrade.trim().toUpperCase()
-                            : computedGrade;
-                          const attitudeTotal = ((Number(student.diaryTally) || 0) * -0.5) + (getFineCount(student) * -1.5) + (Number(student.sheetTally) || 0);
+                          const metrics = getFilteredStudentMetrics(student);
+
                           return (
-                            <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                            <tr key={student.id} className={`hover:bg-slate-50 transition-colors ${metrics.isFiltered ? 'bg-cyan-50/20' : ''}`}>
                               <td className="border-r border-slate-200 p-2 text-center text-slate-400">
                                 <input
                                   type="checkbox"
@@ -9107,138 +9260,214 @@ ${selectedStudentSummaries.join('\n')}`;
                                   className={`bg-transparent text-left w-full focus:outline-none py-1 px-2 rounded font-semibold text-xs text-slate-800 min-w-[240px] whitespace-nowrap overflow-visible ${isAdminAuthenticated ? 'focus:bg-slate-100 cursor-pointer' : 'cursor-default'}`}
                                 />
                               </td>
+
+                              {/* STARS */}
                               <td className="border-r border-slate-200 p-1 text-center text-amber-700 font-bold">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  readOnly={!isAdminAuthenticated}
-                                  value={(student.star || 0) + (student.diaryStar || 0)}
-                                  onChange={(e) => {
-                                    if (!isAdminAuthenticated) return;
-                                    const val = Math.max(0, parseInt(e.target.value) || 0);
-                                    setStudents(prev => prev.map(s => s.id === student.id ? { ...s, star: val - (s.diaryStar || 0), customTotal: null, customGrade: '' } : s));
-                                    debounceUpdateStudent(student.id);
-                                  }}
-                                  className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-bold text-amber-700 ${isAdminAuthenticated ? 'focus:bg-amber-50 cursor-pointer' : 'cursor-default'}`}
-                                />
-                              </td>
-                              <td className="border-r border-slate-200 p-1 text-center text-sky-700 font-bold">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  readOnly={!isAdminAuthenticated}
-                                  value={student.tally}
-                                  onChange={(e) => {
-                                    if (!isAdminAuthenticated) return;
-                                    const val = Math.max(0, parseInt(e.target.value) || 0);
-                                    setStudents(prev => prev.map(s => s.id === student.id ? { ...s, tally: val, customTotal: null, customGrade: '' } : s));
-                                    debounceUpdateStudent(student.id);
-                                  }}
-                                  className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-bold text-sky-700 ${isAdminAuthenticated ? 'focus:bg-sky-50 cursor-pointer' : 'cursor-default'}`}
-                                />
-                              </td>
-                              <td className="border-r border-slate-200 p-1 text-center font-extrabold">
-                                <input
-                                  type="number"
-                                  readOnly={!isAdminAuthenticated}
-                                  value={finalTotal}
-                                  onChange={(e) => {
-                                    if (!isAdminAuthenticated) return;
-                                    const raw = e.target.value;
-                                    if (raw === '') {
-                                      setStudents(prev => prev.map(s => s.id === student.id ? { ...s, customTotal: null, customGrade: '' } : s));
+                                {metrics.isFiltered ? (
+                                  <span className="font-bold text-amber-700 text-xs px-2 py-1 bg-amber-50 rounded border border-amber-200/60 inline-block w-full text-center">
+                                    {metrics.star}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    readOnly={!isAdminAuthenticated}
+                                    value={(student.star || 0) + (student.diaryStar || 0)}
+                                    onChange={(e) => {
+                                      if (!isAdminAuthenticated) return;
+                                      const val = Math.max(0, parseInt(e.target.value) || 0);
+                                      setStudents(prev => prev.map(s => s.id === student.id ? { ...s, star: val - (s.diaryStar || 0), customTotal: null, customGrade: '' } : s));
                                       debounceUpdateStudent(student.id);
-                                    } else {
-                                      const val = parseInt(raw, 10);
-                                      if (!isNaN(val)) {
-                                        setStudents(prev => prev.map(s => s.id === student.id ? { ...s, customTotal: val, customGrade: '' } : s));
-                                        debounceUpdateStudent(student.id);
-                                      }
-                                    }
-                                  }}
-                                  className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-extrabold ${finalTotal > 0 ? 'text-emerald-700' : finalTotal < 0 ? 'text-rose-600' : 'text-slate-500'
-                                    } ${isAdminAuthenticated ? 'focus:bg-slate-100 cursor-pointer' : 'cursor-default'}`}
-                                />
+                                    }}
+                                    className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-bold text-amber-700 ${isAdminAuthenticated ? 'focus:bg-amber-50 cursor-pointer' : 'cursor-default'}`}
+                                  />
+                                )}
                               </td>
+
+                              {/* TALLIES */}
+                              <td className="border-r border-slate-200 p-1 text-center text-sky-700 font-bold">
+                                {metrics.isFiltered ? (
+                                  <span className="font-bold text-sky-700 text-xs px-2 py-1 bg-sky-50 rounded border border-sky-200/60 inline-block w-full text-center">
+                                    {metrics.tally}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    readOnly={!isAdminAuthenticated}
+                                    value={student.tally}
+                                    onChange={(e) => {
+                                      if (!isAdminAuthenticated) return;
+                                      const val = Math.max(0, parseInt(e.target.value) || 0);
+                                      setStudents(prev => prev.map(s => s.id === student.id ? { ...s, tally: val, customTotal: null, customGrade: '' } : s));
+                                      debounceUpdateStudent(student.id);
+                                    }}
+                                    className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-bold text-sky-700 ${isAdminAuthenticated ? 'focus:bg-sky-50 cursor-pointer' : 'cursor-default'}`}
+                                  />
+                                )}
+                              </td>
+
+                              {/* TOTAL SCORE */}
                               <td className="border-r border-slate-200 p-1 text-center font-extrabold">
-                                <input
-                                  type="text"
-                                  readOnly={!isAdminAuthenticated}
-                                  value={finalGrade}
-                                  onChange={(e) => {
-                                    if (!isAdminAuthenticated) return;
-                                    updateStudentField(student.id, 'customGrade', e.target.value.toUpperCase());
-                                  }}
-                                  className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-extrabold uppercase ${finalTotal >= 20 ? 'text-emerald-700' : finalTotal >= 7 ? 'text-emerald-500' : finalTotal >= 0 ? 'text-amber-500' : finalTotal >= -6 ? 'text-orange-500' : finalTotal >= -20 ? 'text-rose-500' : 'text-rose-700'
-                                    } ${isAdminAuthenticated ? 'focus:bg-purple-50 cursor-pointer' : 'cursor-default'}`}
-                                />
+                                {metrics.isFiltered ? (
+                                  <span className={`font-extrabold text-xs px-2 py-1 rounded inline-block w-full text-center ${
+                                    metrics.total > 0 ? 'text-emerald-700 bg-emerald-50' : metrics.total < 0 ? 'text-rose-600 bg-rose-50' : 'text-slate-500 bg-slate-50'
+                                  }`}>
+                                    {metrics.total}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    readOnly={!isAdminAuthenticated}
+                                    value={metrics.total}
+                                    onChange={(e) => {
+                                      if (!isAdminAuthenticated) return;
+                                      const raw = e.target.value;
+                                      if (raw === '') {
+                                        setStudents(prev => prev.map(s => s.id === student.id ? { ...s, customTotal: null, customGrade: '' } : s));
+                                        debounceUpdateStudent(student.id);
+                                      } else {
+                                        const val = parseInt(raw, 10);
+                                        if (!isNaN(val)) {
+                                          setStudents(prev => prev.map(s => s.id === student.id ? { ...s, customTotal: val, customGrade: '' } : s));
+                                          debounceUpdateStudent(student.id);
+                                        }
+                                      }
+                                    }}
+                                    className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-extrabold ${metrics.total > 0 ? 'text-emerald-700' : metrics.total < 0 ? 'text-rose-600' : 'text-slate-500'
+                                      } ${isAdminAuthenticated ? 'focus:bg-slate-100 cursor-pointer' : 'cursor-default'}`}
+                                  />
+                                )}
                               </td>
+
+                              {/* GRADE */}
+                              <td className="border-r border-slate-200 p-1 text-center font-extrabold">
+                                {metrics.isFiltered ? (
+                                  <span className={`font-extrabold text-xs uppercase px-2 py-1 rounded inline-block w-full text-center ${
+                                    metrics.total >= 20 ? 'text-emerald-700 bg-emerald-50' : metrics.total >= 7 ? 'text-emerald-600 bg-emerald-50' : metrics.total >= 0 ? 'text-amber-600 bg-amber-50' : metrics.total >= -6 ? 'text-orange-600 bg-orange-50' : 'text-rose-600 bg-rose-50'
+                                  }`}>
+                                    {metrics.grade}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="text"
+                                    readOnly={!isAdminAuthenticated}
+                                    value={metrics.grade}
+                                    onChange={(e) => {
+                                      if (!isAdminAuthenticated) return;
+                                      updateStudentField(student.id, 'customGrade', e.target.value.toUpperCase());
+                                    }}
+                                    className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-extrabold uppercase ${metrics.total >= 20 ? 'text-emerald-700' : metrics.total >= 7 ? 'text-emerald-500' : metrics.total >= 0 ? 'text-amber-500' : metrics.total >= -6 ? 'text-orange-500' : metrics.total >= -20 ? 'text-rose-500' : 'text-rose-700'
+                                      } ${isAdminAuthenticated ? 'focus:bg-purple-50 cursor-pointer' : 'cursor-default'}`}
+                                  />
+                                )}
+                              </td>
+
+                              {/* N&O TALLY */}
                               <td className="border-r border-slate-200 p-1 text-center font-bold text-orange-600">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  readOnly={!isAdminAuthenticated}
-                                  value={student.neatAndOrderTally || 0}
-                                  onChange={(e) => {
-                                    if (!isAdminAuthenticated) return;
-                                    const val = Math.max(0, parseInt(e.target.value) || 0);
-                                    updateStudentField(student.id, 'neatAndOrderTally', val);
-                                  }}
-                                  className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-bold text-orange-600 ${isAdminAuthenticated ? 'focus:bg-orange-50 cursor-pointer' : 'cursor-default'}`}
-                                />
+                                {metrics.isFiltered ? (
+                                  <span className="font-bold text-orange-600 text-xs px-2 py-1 bg-orange-50 rounded border border-orange-200/60 inline-block w-full text-center">
+                                    {metrics.noTally}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    readOnly={!isAdminAuthenticated}
+                                    value={metrics.noTally}
+                                    onChange={(e) => {
+                                      if (!isAdminAuthenticated) return;
+                                      const val = Math.max(0, parseInt(e.target.value) || 0);
+                                      updateStudentField(student.id, 'neatAndOrderTally', val);
+                                    }}
+                                    className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-bold text-orange-600 ${isAdminAuthenticated ? 'focus:bg-orange-50 cursor-pointer' : 'cursor-default'}`}
+                                  />
+                                )}
                               </td>
+
+                              {/* N&O TOTAL */}
                               <td className="border-r border-slate-200 p-2.5 text-center font-extrabold text-[#1A365D]">
-                                {-getNOIncidents(student)}
+                                {metrics.noTotal}
                               </td>
+
+                              {/* N&O GRADE */}
                               <td className="border-r border-slate-200 p-2.5 text-center font-semibold text-orange-700 uppercase">
-                                {calculateNOGrade(-getNOIncidents(student))}
+                                {metrics.noGrade}
                               </td>
+
+                              {/* DIARY TALLIES */}
                               <td className="border-r border-slate-200 p-1 text-center text-sky-500 font-bold">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  readOnly={!isAdminAuthenticated}
-                                  value={student.diaryTally || 0}
-                                  onChange={(e) => {
-                                    if (!isAdminAuthenticated) return;
-                                    const val = Math.max(0, parseInt(e.target.value) || 0);
-                                    updateStudentField(student.id, 'diaryTally', val);
-                                  }}
-                                  className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-bold text-sky-600 ${isAdminAuthenticated ? 'focus:bg-sky-50 cursor-pointer' : 'cursor-default'}`}
-                                />
+                                {metrics.isFiltered ? (
+                                  <span className="font-bold text-sky-600 text-xs px-2 py-1 bg-sky-50 rounded border border-sky-200/60 inline-block w-full text-center">
+                                    {metrics.diaryTally}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    readOnly={!isAdminAuthenticated}
+                                    value={metrics.diaryTally}
+                                    onChange={(e) => {
+                                      if (!isAdminAuthenticated) return;
+                                      const val = Math.max(0, parseInt(e.target.value) || 0);
+                                      updateStudentField(student.id, 'diaryTally', val);
+                                    }}
+                                    className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-bold text-sky-600 ${isAdminAuthenticated ? 'focus:bg-sky-50 cursor-pointer' : 'cursor-default'}`}
+                                  />
+                                )}
                               </td>
+
+                              {/* SHEETS */}
                               <td className="border-r border-slate-200 p-1 text-center text-cyan-500 font-bold">
-                                <input
-                                  type="number"
-                                  readOnly={!isAdminAuthenticated}
-                                  value={student.sheetTally || 0}
-                                  onChange={(e) => {
-                                    if (!isAdminAuthenticated) return;
-                                    updateStudentField(student.id, 'sheetTally', parseInt(e.target.value) || 0);
-                                  }}
-                                  className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-bold text-cyan-600 ${isAdminAuthenticated ? 'focus:bg-cyan-50 cursor-pointer' : 'cursor-default'}`}
-                                />
+                                {metrics.isFiltered ? (
+                                  <span className="font-bold text-cyan-600 text-xs px-2 py-1 bg-cyan-50 rounded border border-cyan-200/60 inline-block w-full text-center">
+                                    {metrics.sheetTally}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    readOnly={!isAdminAuthenticated}
+                                    value={metrics.sheetTally}
+                                    onChange={(e) => {
+                                      if (!isAdminAuthenticated) return;
+                                      updateStudentField(student.id, 'sheetTally', parseInt(e.target.value) || 0);
+                                    }}
+                                    className={`bg-transparent text-center w-full focus:outline-none py-1 px-1 rounded font-bold text-cyan-600 ${isAdminAuthenticated ? 'focus:bg-cyan-50 cursor-pointer' : 'cursor-default'}`}
+                                  />
+                                )}
                               </td>
+
+                              {/* FINE */}
                               <td className="border-r border-slate-200 p-1 text-center font-bold text-rose-600">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  value={getFineCount(student)}
-                                  onChange={(e) => {
-                                    const val = Math.max(0, parseInt(e.target.value) || 0);
-                                    updateStudentField(student.id, 'fine', val);
-                                    updateStudentField(student.id, 'fineCount', val);
-                                  }}
-                                  className="bg-transparent text-center w-full focus:outline-none focus:bg-rose-50 py-1 px-1 rounded font-bold text-rose-600"
-                                />
+                                {metrics.isFiltered ? (
+                                  <span className="font-bold text-rose-600 text-xs px-2 py-1 bg-rose-50 rounded border border-rose-200/60 inline-block w-full text-center">
+                                    {metrics.fine}
+                                  </span>
+                                ) : (
+                                  <input
+                                    type="number"
+                                    min="0"
+                                    value={metrics.fine}
+                                    onChange={(e) => {
+                                      const val = Math.max(0, parseInt(e.target.value) || 0);
+                                      updateStudentField(student.id, 'fine', val);
+                                      updateStudentField(student.id, 'fineCount', val);
+                                    }}
+                                    className="bg-transparent text-center w-full focus:outline-none focus:bg-rose-50 py-1 px-1 rounded font-bold text-rose-600"
+                                  />
+                                )}
                               </td>
-                              <td className={`border-r border-slate-200 p-2.5 text-center font-extrabold text-[#1A365D]`}>
-                                {attitudeTotal}
+
+                              {/* TOTAL ATTITUDE */}
+                              <td className="border-r border-slate-200 p-2.5 text-center font-extrabold text-[#1A365D]">
+                                {metrics.attitudeTotal}
                               </td>
+
+                              {/* ATTITUDE GRADE */}
                               <td className="p-1 font-semibold text-indigo-700">
                                 <input
                                   type="text"
-                                  value={calculateAttitudeGrade(attitudeTotal)}
+                                  value={metrics.attitudeGrade}
                                   readOnly={true}
                                   className="bg-transparent text-center w-full focus:outline-none focus:bg-indigo-50 py-1 px-1 rounded font-semibold text-xs text-indigo-700 uppercase"
                                 />
@@ -9623,6 +9852,146 @@ ${selectedStudentSummaries.join('\n')}`;
                   </div>
                 </div>
               )}
+            </div>
+          </div>
+        )}
+
+        {/* Filter Score Sheet Modal */}
+        {showScoreFilterModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fadeIn">
+            <div className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden border border-slate-200">
+              {/* Modal Header */}
+              <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-cyan-600 to-teal-600 text-white">
+                <div className="flex items-center gap-2.5">
+                  <div className="p-2 bg-white/10 rounded-xl">
+                    <Filter className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-extrabold text-base tracking-wide">Filter Score Sheet</h3>
+                    <p className="text-xs text-cyan-100 font-medium">Select custom date range for score calculation</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowScoreFilterModal(false)}
+                  className="p-1 rounded-lg text-white/80 hover:text-white hover:bg-white/10 transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-5">
+                {/* Quick Presets */}
+                <div>
+                  <label className="block text-xs font-extrabold text-slate-500 uppercase tracking-wider mb-2">
+                    Quick Date Presets
+                  </label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const today = new Date().toISOString().split('T')[0];
+                        setScoreFilterFromDate(today);
+                        setScoreFilterToDate(today);
+                      }}
+                      className="py-2 px-3 text-xs font-bold rounded-xl border border-slate-200 hover:border-cyan-500 hover:bg-cyan-50 text-slate-700 transition-all"
+                    >
+                      Today
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setScoreFilterFromDate(getFirstDayOfMonth());
+                        setScoreFilterToDate(getLastDayOfMonth());
+                      }}
+                      className="py-2 px-3 text-xs font-bold rounded-xl border border-slate-200 hover:border-cyan-500 hover:bg-cyan-50 text-slate-700 transition-all"
+                    >
+                      This Month
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const d = new Date();
+                        const firstPrev = new Date(d.getFullYear(), d.getMonth() - 1, 1).toISOString().split('T')[0];
+                        const lastPrev = new Date(d.getFullYear(), d.getMonth(), 0).toISOString().split('T')[0];
+                        setScoreFilterFromDate(firstPrev);
+                        setScoreFilterToDate(lastPrev);
+                      }}
+                      className="py-2 px-3 text-xs font-bold rounded-xl border border-slate-200 hover:border-cyan-500 hover:bg-cyan-50 text-slate-700 transition-all"
+                    >
+                      Last Month
+                    </button>
+                  </div>
+                </div>
+
+                {/* Date Inputs */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-1.5">
+                      From Date
+                    </label>
+                    <input
+                      type="date"
+                      value={scoreFilterFromDate}
+                      onChange={(e) => setScoreFilterFromDate(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-extrabold text-slate-600 uppercase tracking-wider mb-1.5">
+                      End Date
+                    </label>
+                    <input
+                      type="date"
+                      value={scoreFilterToDate}
+                      onChange={(e) => setScoreFilterToDate(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-300 text-sm font-semibold text-slate-800 focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Active Filter Info Box */}
+                {isScoreFilterActive && (
+                  <div className="p-3 bg-cyan-50 border border-cyan-200 rounded-xl flex items-center justify-between text-xs text-cyan-800 font-semibold">
+                    <span>Filter Active: {scoreFilterFromDate || 'Start'} to {scoreFilterToDate || 'Today'}</span>
+                    <button
+                      type="button"
+                      onClick={handleResetScoreFilter}
+                      className="text-rose-600 hover:underline font-bold text-[11px]"
+                    >
+                      Clear Filter
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={handleResetScoreFilter}
+                  className="py-2.5 px-4 rounded-xl font-bold text-xs text-slate-600 hover:bg-slate-200 transition-colors"
+                >
+                  Reset / Clear
+                </button>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowScoreFilterModal(false)}
+                    className="py-2.5 px-4 rounded-xl font-bold text-xs text-slate-500 hover:bg-slate-200 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleApplyScoreFilter}
+                    className="py-2.5 px-5 rounded-xl font-extrabold text-xs bg-cyan-600 hover:bg-cyan-700 text-white shadow-md active:scale-95 transition-all flex items-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    Apply Filter
+                  </button>
+                </div>
+              </div>
             </div>
           </div>
         )}
