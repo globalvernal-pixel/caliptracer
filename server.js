@@ -1313,7 +1313,7 @@ app.get('/api/ineligible', async (req, res) => {
     // 1. Auto-update expired records to status EXPIRED without deleting them
     await pool.query("UPDATE ineligible_records SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND end_date <= CURRENT_TIMESTAMP");
 
-    // 2. Auto-populate ineligible_records for any students in `students` table marked ineligible = TRUE who don't have an active record yet
+    // 2. Auto-populate ineligible_records for any students in `students` table marked ineligible = TRUE or with Black Sheets who don't have a record yet
     await pool.query(`
       INSERT INTO ineligible_records (id, student_id, student_name, student_class, reason, start_date, end_date, status)
       SELECT 
@@ -1321,14 +1321,14 @@ app.get('/api/ineligible', async (req, res) => {
         s.id,
         s.name,
         COALESCE(s.class, ''),
-        COALESCE(NULLIF(s.ineligible_reason, ''), 'Black Sheet / Misconduct'),
+        COALESCE(NULLIF(s.ineligible_reason, ''), 'Black Sheet'),
         COALESCE(s.ineligible_date, CURRENT_TIMESTAMP),
         COALESCE(s.ineligible_date, CURRENT_TIMESTAMP) + INTERVAL '30 days',
         'ACTIVE'
       FROM students s
-      WHERE s.ineligible = TRUE
+      WHERE (s.ineligible = TRUE OR (s.black_sheet IS NOT NULL AND s.black_sheet > 0))
       AND NOT EXISTS (
-        SELECT 1 FROM ineligible_records ir WHERE ir.student_id = s.id AND ir.status = 'ACTIVE' AND ir.end_date > CURRENT_TIMESTAMP
+        SELECT 1 FROM ineligible_records ir WHERE ir.student_id = s.id
       );
     `);
 

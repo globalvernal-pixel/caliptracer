@@ -7340,54 +7340,42 @@ ${selectedStudentSummaries.join('\n')}`;
                   (() => {
                     let allRecords = [...ineligibleRecords];
 
-                    // Always merge any student marked ineligible in students list who does not already have an active entry in ineligibleRecords
-                    students.filter(s => s.ineligible).forEach(s => {
-                      const hasActiveInRecord = ineligibleRecords.some(r =>
-                        String(r.studentId) === String(s.id) &&
-                        (r.status || 'ACTIVE').toUpperCase() === 'ACTIVE' &&
-                        (!r.endDate || Date.now() < new Date(r.endDate).getTime())
-                      );
+                    // Merge any ineligible or Black Sheet student from students list who does not already have an entry in ineligibleRecords
+                    students.filter(s => s.ineligible || (s.blackSheet && Number(s.blackSheet) > 0)).forEach(s => {
+                      const hasRecord = ineligibleRecords.some(r => String(r.studentId) === String(s.id));
 
-                      if (!hasActiveInRecord) {
+                      if (!hasRecord) {
                         const start = s.ineligibleDate ? new Date(s.ineligibleDate) : new Date();
                         const end = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+                        const now = Date.now();
+                        const isExpired = now >= end.getTime();
                         allRecords.push({
                           id: `student-flag-${s.id}`,
                           studentId: s.id,
                           studentName: s.name,
                           studentClass: s.class,
-                          reason: s.ineligibleReason || 'Black Sheet / Misconduct',
+                          reason: s.ineligibleReason || (s.blackSheet ? `Black Sheet (${s.blackSheet})` : 'Black Sheet / Misconduct'),
                           startDate: start.toISOString(),
                           endDate: end.toISOString(),
-                          status: 'ACTIVE'
+                          status: isExpired ? 'EXPIRED' : 'ACTIVE'
                         });
                       }
                     });
 
                     const isDateFilterActive = Boolean(ineligibleFromDate || ineligibleToDate);
 
-                    // Requirement 2 & 3: Default view shows active entries. Date Range filter retrieves ALL historical records (active, expired, removed).
+                    // Requirement: Keep all records (active, expired, removed, black sheet recipients) fully visible by default.
                     const filteredRecords = allRecords.filter(r => {
-                      const recStatus = (r.status || 'ACTIVE').toUpperCase();
-                      const now = Date.now();
-                      const endMs = r.endDate ? new Date(r.endDate).getTime() : 0;
-                      const isCurrentlyActive = recStatus === 'ACTIVE' && (endMs === 0 || now < endMs);
-
-                      if (!isDateFilterActive) {
-                        // Default live view: show active records only
-                        if (!isCurrentlyActive) return false;
-                      } else {
-                        // Historical Date Range Filtering
-                        if (ineligibleFromDate) {
-                          const fromTime = new Date(ineligibleFromDate).setHours(0,0,0,0);
-                          const recStartTime = new Date(r.startDate).setHours(0,0,0,0);
-                          if (isNaN(recStartTime) || recStartTime < fromTime) return false;
-                        }
-                        if (ineligibleToDate) {
-                          const toTime = new Date(ineligibleToDate).setHours(23,59,59,999);
-                          const recStartTime = new Date(r.startDate).setHours(23,59,59,999);
-                          if (isNaN(recStartTime) || recStartTime > toTime) return false;
-                        }
+                      // Date Range Filtering (applies when date filter inputs are set)
+                      if (ineligibleFromDate) {
+                        const fromTime = new Date(ineligibleFromDate).setHours(0,0,0,0);
+                        const recStartTime = new Date(r.startDate).setHours(0,0,0,0);
+                        if (isNaN(recStartTime) || recStartTime < fromTime) return false;
+                      }
+                      if (ineligibleToDate) {
+                        const toTime = new Date(ineligibleToDate).setHours(23,59,59,999);
+                        const recStartTime = new Date(r.startDate).setHours(23,59,59,999);
+                        if (isNaN(recStartTime) || recStartTime > toTime) return false;
                       }
 
                       // Search Query Filter
