@@ -1310,6 +1310,17 @@ app.post('/api/phone-passes/batch', async (req, res) => {
 // ==================== INELIGIBLE RECORDS ENDPOINTS ====================
 app.get('/api/ineligible', async (req, res) => {
   try {
+    // Auto-update expired records to status EXPIRED without deleting them
+    await pool.query("UPDATE ineligible_records SET status = 'EXPIRED' WHERE status = 'ACTIVE' AND end_date <= CURRENT_TIMESTAMP");
+
+    // Sync students table ineligible flag for students with no remaining active records
+    await pool.query(`
+      UPDATE students s SET ineligible = FALSE, ineligible_reason = '', ineligible_date = NULL
+      WHERE ineligible = TRUE AND NOT EXISTS (
+        SELECT 1 FROM ineligible_records ir WHERE ir.student_id = s.id AND ir.status = 'ACTIVE' AND ir.end_date > CURRENT_TIMESTAMP
+      )
+    `);
+
     const result = await pool.query(
       "SELECT * FROM ineligible_records ORDER BY start_date DESC"
     );
@@ -1385,24 +1396,30 @@ app.post('/api/ineligible', async (req, res) => {
 app.delete('/api/ineligible/:id', async (req, res) => {
   try {
     const { id } = req.params;
+    const { action } = req.query; // 'expire' or 'remove'
     const findRes = await pool.query("SELECT student_id FROM ineligible_records WHERE id = $1", [id]);
     if (findRes.rows.length === 0) {
       return res.status(404).json({ error: "Record not found" });
     }
     const studentId = findRes.rows[0].student_id;
+    const targetStatus = action === 'expire' ? 'EXPIRED' : 'REMOVED';
 
-    await pool.query("DELETE FROM ineligible_records WHERE id = $1", [id]);
+    // Update status instead of deleting record from DB to preserve permanent history log
+    await pool.query("UPDATE ineligible_records SET status = $1 WHERE id = $2", [targetStatus, id]);
 
-    // Check if student has any active ineligible records remaining
-    const checkActive = await pool.query("SELECT id FROM ineligible_records WHERE student_id = $1 AND status = 'ACTIVE' AND end_date > CURRENT_TIMESTAMP", [studentId]);
+    // Check if student has remaining ACTIVE ineligible records
+    const checkActive = await pool.query(
+      "SELECT id FROM ineligible_records WHERE student_id = $1 AND status = 'ACTIVE' AND end_date > CURRENT_TIMESTAMP",
+      [studentId]
+    );
     if (checkActive.rows.length === 0) {
       await pool.query("UPDATE students SET ineligible = FALSE, ineligible_reason = '', ineligible_date = NULL WHERE id = $1", [studentId]);
     }
 
-    res.json({ success: true, message: "Ineligible record deleted successfully" });
+    res.json({ success: true, message: `Ineligible record marked as ${targetStatus}` });
   } catch (err) {
-    console.error("Error deleting ineligible record:", err);
-    res.status(500).json({ error: "Failed to delete ineligible record" });
+    console.error("Error updating ineligible record status:", err);
+    res.status(500).json({ error: "Failed to update ineligible record status" });
   }
 });
 

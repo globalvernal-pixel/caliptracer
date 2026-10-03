@@ -1495,6 +1495,7 @@ export default function App() {
   }, [ineligibleRecords]);
 
   // PDF Export for Ineligible Students (Requirement 5: Class, Name, Reason, Start Date, End Date)
+  // PDF Export for Ineligible Students (Class, Name, Reason, Start Date, End Date, Status)
   const handleExportIneligiblePDF = (recordsList) => {
     const doc = new jsPDF();
     doc.setFillColor(225, 29, 72);
@@ -1514,12 +1515,13 @@ export default function App() {
       r.studentName || '',
       r.reason || 'Black Sheet / Misconduct',
       r.startDate ? new Date(r.startDate).toLocaleDateString('en-GB') : '-',
-      r.endDate ? new Date(r.endDate).toLocaleDateString('en-GB') : '-'
+      r.endDate ? new Date(r.endDate).toLocaleDateString('en-GB') : '-',
+      (r.status || 'ACTIVE').toUpperCase()
     ]);
 
     autoTable(doc, {
       startY: 30,
-      head: [['CLASS', 'NAME', 'REASON', 'START DATE', 'END DATE']],
+      head: [['CLASS', 'NAME', 'REASON', 'START DATE', 'END DATE', 'STATUS']],
       body: tableRows,
       theme: 'grid',
       headStyles: {
@@ -1534,11 +1536,12 @@ export default function App() {
         textColor: [51, 65, 85]
       },
       columnStyles: {
-        0: { cellWidth: 25, fontStyle: 'bold' },
-        1: { cellWidth: 45, fontStyle: 'bold' },
-        2: { cellWidth: 60 },
-        3: { cellWidth: 28 },
-        4: { cellWidth: 28 }
+        0: { cellWidth: 22, fontStyle: 'bold' },
+        1: { cellWidth: 40, fontStyle: 'bold' },
+        2: { cellWidth: 55 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 25 },
+        5: { cellWidth: 20, fontStyle: 'bold' }
       }
     });
 
@@ -1546,14 +1549,15 @@ export default function App() {
     setShowIneligibleExportModal(false);
   };
 
-  // Excel Export for Ineligible Students (Requirement 5: Class, Name, Reason, Start Date, End Date)
+  // Excel Export for Ineligible Students (Class, Name, Reason, Start Date, End Date, Status)
   const handleExportIneligibleExcel = (recordsList) => {
     const excelData = recordsList.map(r => ({
       'Class': (r.studentClass || '').toUpperCase(),
       'Name': r.studentName || '',
       'Reason': r.reason || 'Black Sheet / Misconduct',
       'Start Date': r.startDate ? new Date(r.startDate).toLocaleDateString('en-GB') : '-',
-      'End Date': r.endDate ? new Date(r.endDate).toLocaleDateString('en-GB') : '-'
+      'End Date': r.endDate ? new Date(r.endDate).toLocaleDateString('en-GB') : '-',
+      'Status': (r.status || 'ACTIVE').toUpperCase()
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -1565,7 +1569,8 @@ export default function App() {
       { wch: 30 },
       { wch: 40 },
       { wch: 16 },
-      { wch: 16 }
+      { wch: 16 },
+      { wch: 14 }
     ];
 
     XLSX.writeFile(workbook, `ineligible_students_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -7304,34 +7309,51 @@ ${selectedStudentSummaries.join('\n')}`;
                   </div>
                 ) : performanceView === 'ineligible' ? (
                   (() => {
-                    let activeRecords = [...ineligibleRecords];
-                    if (activeRecords.length === 0) {
+                    let allRecords = [...ineligibleRecords];
+                    if (allRecords.length === 0) {
                       students.filter(s => s.ineligible).forEach(s => {
                         const start = s.ineligibleDate ? new Date(s.ineligibleDate) : new Date();
                         const end = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
-                        activeRecords.push({
+                        allRecords.push({
                           id: `fallback-${s.id}`,
                           studentId: s.id,
                           studentName: s.name,
                           studentClass: s.class,
                           reason: s.ineligibleReason || 'Black Sheet / Misconduct',
                           startDate: start.toISOString(),
-                          endDate: end.toISOString()
+                          endDate: end.toISOString(),
+                          status: 'ACTIVE'
                         });
                       });
                     }
 
-                    const filteredRecords = activeRecords.filter(r => {
-                      if (ineligibleFromDate) {
-                        const fromTime = new Date(ineligibleFromDate).setHours(0,0,0,0);
-                        const recStartTime = new Date(r.startDate).setHours(0,0,0,0);
-                        if (isNaN(recStartTime) || recStartTime < fromTime) return false;
+                    const isDateFilterActive = Boolean(ineligibleFromDate || ineligibleToDate);
+
+                    // Requirement 2 & 3: Default view shows active entries. Date Range filter retrieves ALL historical records (active, expired, removed).
+                    const filteredRecords = allRecords.filter(r => {
+                      const recStatus = (r.status || 'ACTIVE').toUpperCase();
+                      const now = Date.now();
+                      const endMs = r.endDate ? new Date(r.endDate).getTime() : 0;
+                      const isCurrentlyActive = recStatus === 'ACTIVE' && (endMs === 0 || now < endMs);
+
+                      if (!isDateFilterActive) {
+                        // Default live view: show active records only
+                        if (!isCurrentlyActive) return false;
+                      } else {
+                        // Historical Date Range Filtering
+                        if (ineligibleFromDate) {
+                          const fromTime = new Date(ineligibleFromDate).setHours(0,0,0,0);
+                          const recStartTime = new Date(r.startDate).setHours(0,0,0,0);
+                          if (isNaN(recStartTime) || recStartTime < fromTime) return false;
+                        }
+                        if (ineligibleToDate) {
+                          const toTime = new Date(ineligibleToDate).setHours(23,59,59,999);
+                          const recStartTime = new Date(r.startDate).setHours(23,59,59,999);
+                          if (isNaN(recStartTime) || recStartTime > toTime) return false;
+                        }
                       }
-                      if (ineligibleToDate) {
-                        const toTime = new Date(ineligibleToDate).setHours(23,59,59,999);
-                        const recStartTime = new Date(r.startDate).setHours(23,59,59,999);
-                        if (isNaN(recStartTime) || recStartTime > toTime) return false;
-                      }
+
+                      // Search Query Filter
                       if (ineligibleSearchQuery.trim()) {
                         const q = ineligibleSearchQuery.toLowerCase().trim();
                         const matchesName = (r.studentName || '').toLowerCase().includes(q);
@@ -7358,14 +7380,14 @@ ${selectedStudentSummaries.join('\n')}`;
                             <button
                               onClick={() => setShowIneligibleDateFilterModal(true)}
                               className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all border shrink-0 ${
-                                ineligibleFromDate || ineligibleToDate
+                                isDateFilterActive
                                   ? 'bg-rose-600 border-rose-600 text-white hover:bg-rose-700'
                                   : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
                               }`}
                             >
                               <Filter className="w-3.5 h-3.5" />
                               <span>Filter</span>
-                              {(ineligibleFromDate || ineligibleToDate) && (
+                              {isDateFilterActive && (
                                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                               )}
                             </button>
@@ -7379,19 +7401,42 @@ ${selectedStudentSummaries.join('\n')}`;
                           </button>
                         </div>
 
-                        {/* Table View */}
-                        <div className="flex-1 overflow-y-auto p-4">
-                          <table className="w-full text-left text-xs bg-white rounded-xl shadow-sm border border-slate-200">
+                        {/* Date Filter Active Notification Banner */}
+                        {isDateFilterActive && (
+                          <div className="px-4 py-2 bg-rose-50 border-b border-rose-200 flex items-center justify-between text-xs text-rose-800 shrink-0">
+                            <div className="flex items-center gap-2 font-extrabold">
+                              <span>🗓️ Historical & Active Records Filter:</span>
+                              <span className="bg-white px-2 py-0.5 rounded-md border border-rose-200 text-rose-700 font-bold">
+                                {ineligibleFromDate ? new Date(ineligibleFromDate).toLocaleDateString('en-GB') : 'Earliest'} — {ineligibleToDate ? new Date(ineligibleToDate).toLocaleDateString('en-GB') : 'Latest'}
+                              </span>
+                              <span className="text-[10px] text-rose-600 font-medium">({filteredRecords.length} records found)</span>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setIneligibleFromDate('');
+                                setIneligibleToDate('');
+                              }}
+                              className="text-[10px] font-black text-rose-700 hover:text-rose-900 underline uppercase tracking-wider"
+                            >
+                              Clear Filter
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Responsive Scrollable Table View */}
+                        <div className="flex-1 overflow-y-auto overflow-x-auto p-4">
+                          <table className="w-full min-w-[850px] text-left text-xs bg-white rounded-xl shadow-sm border border-slate-200">
                             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider">
                               <tr>
                                 <th className="p-3 font-extrabold w-20">Class</th>
-                                <th className="p-3 font-extrabold">Name</th>
-                                <th className="p-3 font-extrabold">Reason</th>
-                                <th className="p-3 font-extrabold text-center">Start Date</th>
-                                <th className="p-3 font-extrabold text-center">End Date</th>
-                                <th className="p-3 font-extrabold text-center">Black Sheets</th>
-                                <th className="p-3 font-extrabold text-center">Ineligible Times</th>
-                                <th className="p-3 font-extrabold text-right">Action</th>
+                                <th className="p-3 font-extrabold min-w-[130px]">Name</th>
+                                <th className="p-3 font-extrabold min-w-[150px]">Reason</th>
+                                <th className="p-3 font-extrabold text-center min-w-[90px]">Start Date</th>
+                                <th className="p-3 font-extrabold text-center min-w-[90px]">End Date</th>
+                                <th className="p-3 font-extrabold text-center min-w-[80px]">Status</th>
+                                <th className="p-3 font-extrabold text-center min-w-[70px]">Black Sheets</th>
+                                <th className="p-3 font-extrabold text-center min-w-[70px]">Ineligible Times</th>
+                                <th className="p-3 font-extrabold text-right min-w-[90px]">Action</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
@@ -7404,6 +7449,13 @@ ${selectedStudentSummaries.join('\n')}`;
                                 const endFormatted = r.endDate
                                   ? new Date(r.endDate).toLocaleDateString('en-GB')
                                   : '-';
+
+                                const statusUpper = (r.status || 'ACTIVE').toUpperCase();
+                                const now = Date.now();
+                                const endMs = r.endDate ? new Date(r.endDate).getTime() : 0;
+                                const isExpired = statusUpper === 'EXPIRED' || (endMs > 0 && now >= endMs);
+                                const isRemoved = statusUpper === 'REMOVED';
+                                const isActive = !isExpired && !isRemoved;
 
                                 return (
                                   <tr key={r.id} className="hover:bg-slate-50 transition-colors">
@@ -7421,6 +7473,23 @@ ${selectedStudentSummaries.join('\n')}`;
                                       </span>
                                     </td>
                                     <td className="p-3 text-center">
+                                      {isActive && (
+                                        <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md font-black text-[9px] uppercase tracking-wider">
+                                          ACTIVE
+                                        </span>
+                                      )}
+                                      {isExpired && (
+                                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md font-black text-[9px] uppercase tracking-wider">
+                                          EXPIRED
+                                        </span>
+                                      )}
+                                      {isRemoved && (
+                                        <span className="px-2 py-0.5 bg-slate-100 text-slate-600 border border-slate-200 rounded-md font-black text-[9px] uppercase tracking-wider">
+                                          REMOVED
+                                        </span>
+                                      )}
+                                    </td>
+                                    <td className="p-3 text-center">
                                       <span className="px-2 py-0.5 bg-slate-900 text-white rounded-md text-[10px] font-extrabold">
                                         {blackSheetCount}
                                       </span>
@@ -7431,19 +7500,29 @@ ${selectedStudentSummaries.join('\n')}`;
                                       </span>
                                     </td>
                                     <td className="p-3 text-right">
-                                      <button
-                                        onClick={() => handleRemoveIneligibleRecord(r)}
-                                        className="px-2.5 py-1 text-[10px] font-extrabold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors uppercase tracking-wider border border-rose-200 active:scale-95"
-                                      >
-                                        Remove
-                                      </button>
+                                      {isActive ? (
+                                        <button
+                                          onClick={() => handleRemoveIneligibleRecord(r)}
+                                          className="px-2.5 py-1 text-[10px] font-extrabold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors uppercase tracking-wider border border-rose-200 active:scale-95"
+                                        >
+                                          Remove
+                                        </button>
+                                      ) : isExpired ? (
+                                        <span className="text-[10px] font-extrabold text-amber-600 bg-amber-50 px-2 py-1 rounded-md border border-amber-100">
+                                          Expired
+                                        </span>
+                                      ) : (
+                                        <span className="text-[10px] font-extrabold text-slate-500 bg-slate-100 px-2 py-1 rounded-md border border-slate-200">
+                                          Removed
+                                        </span>
+                                      )}
                                     </td>
                                   </tr>
                                 );
                               })}
                               {filteredRecords.length === 0 && (
                                 <tr>
-                                  <td colSpan="8" className="p-8 text-center text-slate-400 font-medium">
+                                  <td colSpan="9" className="p-8 text-center text-slate-400 font-medium">
                                     No ineligible student records found matching date range or search criteria.
                                   </td>
                                 </tr>
