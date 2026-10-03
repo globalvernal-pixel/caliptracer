@@ -63,7 +63,6 @@ import {
   Square,
   StopCircle,
   FileDown,
-  Filter,
   Printer,
   Cpu
 } from 'lucide-react';
