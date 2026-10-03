@@ -1429,82 +1429,73 @@ export default function App() {
   const [ineligibleSelectedStudents, setIneligibleSelectedStudents] = useState([]);
   const [ineligibleReasonInput, setIneligibleReasonInput] = useState('');
 
-  // Enhanced Ineligible Management State
+  // Enhanced Ineligible Records State
+  const [ineligibleRecords, setIneligibleRecords] = useState([]);
   const [showIneligibleExportModal, setShowIneligibleExportModal] = useState(false);
-  const [showIneligibleFilterModal, setShowIneligibleFilterModal] = useState(false);
-  const [ineligibleFilterClass, setIneligibleFilterClass] = useState('all');
-  const [ineligibleFilterReason, setIneligibleFilterReason] = useState('all');
+  const [showIneligibleDateFilterModal, setShowIneligibleDateFilterModal] = useState(false);
+  const [ineligibleFromDate, setIneligibleFromDate] = useState('');
+  const [ineligibleToDate, setIneligibleToDate] = useState('');
   const [ineligibleSearchQuery, setIneligibleSearchQuery] = useState('');
   const [ineligibleAuthErrorModal, setIneligibleAuthErrorModal] = useState(false);
 
-  // Ineligible 1-Month Expiry Helpers (30 Days = 2,592,000,000 ms)
-  const INELIGIBLE_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
-
-  const getIneligibleDaysRemaining = (student) => {
-    if (!student || !student.ineligible) return 0;
-    const issueTime = student.ineligibleDate ? new Date(student.ineligibleDate).getTime() : Date.now();
-    if (isNaN(issueTime)) return 30;
-    const elapsed = Date.now() - issueTime;
-    const remainingMs = INELIGIBLE_EXPIRY_MS - elapsed;
-    if (remainingMs <= 0) return 0;
-    return Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+  // Fetch Ineligible Records
+  const fetchIneligibleRecords = () => {
+    fetch('/api/ineligible')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setIneligibleRecords(data);
+        }
+      })
+      .catch(err => console.error("Error fetching ineligible records:", err));
   };
 
-  const getStudentBlackSheetCount = (student) => {
-    if (!student) return 0;
+  useEffect(() => {
+    fetchIneligibleRecords();
+  }, []);
+
+  const getStudentBlackSheetCount = (studentId) => {
     const historyCount = (scoreSheetHistoryLogs || []).filter(h =>
-      String(h.student_id) === String(student.id) &&
+      String(h.student_id) === String(studentId) &&
       (h.event_type === 'Black Sheet' || (h.reason && h.reason.toLowerCase().includes('black sheet')))
     ).length;
-    return Math.max(historyCount, Number(student.blackSheet) || 0);
-  };
-
-  const getStudentIneligibleTimesCount = (student) => {
-    if (!student) return 0;
-    const historyCount = (scoreSheetHistoryLogs || []).filter(h =>
-      String(h.student_id) === String(student.id) &&
-      (h.event_type === 'Ineligible' || (h.reason && h.reason.toLowerCase().includes('ineligible')))
+    const recordsCount = (ineligibleRecords || []).filter(r =>
+      String(r.studentId) === String(studentId) && (r.reason || '').toLowerCase().includes('black sheet')
     ).length;
-    return Math.max(historyCount, student.ineligible ? 1 : 0);
+    return Math.max(historyCount, recordsCount);
   };
 
-  // Automatic 1-Month Expiry Cleanup Effect
-  useEffect(() => {
-    if (!students || students.length === 0) return;
-    const now = Date.now();
-    let hasChanges = false;
-    let expiredList = [];
+  const getStudentIneligibleTimesCount = (studentId) => {
+    return (ineligibleRecords || []).filter(r => String(r.studentId) === String(studentId)).length;
+  };
 
-    const updatedStudents = students.map(s => {
-      if (s.ineligible) {
-        if (!s.ineligibleDate) {
-          // Default issue date to current time if missing
-          return { ...s, ineligibleDate: new Date().toISOString() };
-        }
-        const issueTime = new Date(s.ineligibleDate).getTime();
-        if (!isNaN(issueTime) && (now - issueTime) >= INELIGIBLE_EXPIRY_MS) {
-          hasChanges = true;
-          const expired = { ...s, ineligible: false, ineligibleReason: '', ineligibleDate: null };
-          expiredList.push(expired);
-          return expired;
+  // Automatic 1-Month Expiry Cleanup Effect for Ineligible Records
+  useEffect(() => {
+    if (!ineligibleRecords || ineligibleRecords.length === 0) return;
+    const now = Date.now();
+    let expiredRecords = [];
+
+    ineligibleRecords.forEach(rec => {
+      if (rec.status === 'ACTIVE' || !rec.status) {
+        const endTime = rec.endDate ? new Date(rec.endDate).getTime() : 0;
+        if (!isNaN(endTime) && endTime > 0 && now >= endTime) {
+          expiredRecords.push(rec);
         }
       }
-      return s;
     });
 
-    if (hasChanges && expiredList.length > 0) {
-      console.log(`Auto-expiring ${expiredList.length} ineligible student entries after 1 month.`);
-      setStudents(updatedStudents);
-      fetch('/api/students/bulk-upsert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ students: expiredList })
-      }).catch(err => console.error("Error auto-expiring ineligible students:", err));
+    if (expiredRecords.length > 0) {
+      console.log(`Auto-expiring ${expiredRecords.length} ineligible student records after 1 month.`);
+      expiredRecords.forEach(rec => {
+        fetch(`/api/ineligible/${rec.id}`, { method: 'DELETE' })
+          .then(() => fetchIneligibleRecords())
+          .catch(err => console.error("Error auto-deleting expired record:", err));
+      });
     }
-  }, [students]);
+  }, [ineligibleRecords]);
 
-  // PDF Export for Ineligible Students
-  const handleExportIneligiblePDF = (ineligibleList) => {
+  // PDF Export for Ineligible Students (Requirement 5: Class, Name, Reason, Start Date, End Date)
+  const handleExportIneligiblePDF = (recordsList) => {
     const doc = new jsPDF();
     doc.setFillColor(225, 29, 72);
     doc.rect(0, 0, 210, 25, 'F');
@@ -1516,17 +1507,19 @@ export default function App() {
 
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
-    doc.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} | Total Students: ${ineligibleList.length}`, 14, 21);
+    doc.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} | Total Records: ${recordsList.length}`, 14, 21);
 
-    const tableRows = ineligibleList.map(s => [
-      (s.class || '').toUpperCase(),
-      s.name || '',
-      s.ineligibleReason || 'Black Sheet / Misconduct'
+    const tableRows = recordsList.map(r => [
+      (r.studentClass || '').toUpperCase(),
+      r.studentName || '',
+      r.reason || 'Black Sheet / Misconduct',
+      r.startDate ? new Date(r.startDate).toLocaleDateString('en-GB') : '-',
+      r.endDate ? new Date(r.endDate).toLocaleDateString('en-GB') : '-'
     ]);
 
     autoTable(doc, {
       startY: 30,
-      head: [['CLASS', 'NAME', 'REASON']],
+      head: [['CLASS', 'NAME', 'REASON', 'START DATE', 'END DATE']],
       body: tableRows,
       theme: 'grid',
       headStyles: {
@@ -1541,9 +1534,11 @@ export default function App() {
         textColor: [51, 65, 85]
       },
       columnStyles: {
-        0: { cellWidth: 30, fontStyle: 'bold' },
-        1: { cellWidth: 60, fontStyle: 'bold' },
-        2: { cellWidth: 100 }
+        0: { cellWidth: 25, fontStyle: 'bold' },
+        1: { cellWidth: 45, fontStyle: 'bold' },
+        2: { cellWidth: 60 },
+        3: { cellWidth: 28 },
+        4: { cellWidth: 28 }
       }
     });
 
@@ -1551,12 +1546,14 @@ export default function App() {
     setShowIneligibleExportModal(false);
   };
 
-  // Excel Export for Ineligible Students
-  const handleExportIneligibleExcel = (ineligibleList) => {
-    const excelData = ineligibleList.map(s => ({
-      'Class': (s.class || '').toUpperCase(),
-      'Name': s.name || '',
-      'Reason': s.ineligibleReason || 'Black Sheet / Misconduct'
+  // Excel Export for Ineligible Students (Requirement 5: Class, Name, Reason, Start Date, End Date)
+  const handleExportIneligibleExcel = (recordsList) => {
+    const excelData = recordsList.map(r => ({
+      'Class': (r.studentClass || '').toUpperCase(),
+      'Name': r.studentName || '',
+      'Reason': r.reason || 'Black Sheet / Misconduct',
+      'Start Date': r.startDate ? new Date(r.startDate).toLocaleDateString('en-GB') : '-',
+      'End Date': r.endDate ? new Date(r.endDate).toLocaleDateString('en-GB') : '-'
     }));
 
     const worksheet = XLSX.utils.json_to_sheet(excelData);
@@ -1565,8 +1562,10 @@ export default function App() {
 
     worksheet['!cols'] = [
       { wch: 14 },
-      { wch: 32 },
-      { wch: 55 }
+      { wch: 30 },
+      { wch: 40 },
+      { wch: 16 },
+      { wch: 16 }
     ];
 
     XLSX.writeFile(workbook, `ineligible_students_${new Date().toISOString().split('T')[0]}.xlsx`);
@@ -2020,6 +2019,21 @@ EV: ${morningBlissEv}`;
           updated.ineligibleDate = new Date().toISOString();
           updated.blackSheet = (Number(studentToUpdate.blackSheet) || 0) + 1;
           logHistory(studentToUpdate.id, 'Black Sheet', -8, sheetReason);
+
+          const startDate = new Date();
+          const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+          fetch('/api/ineligible', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              studentId: studentToUpdate.id,
+              studentName: studentToUpdate.name,
+              studentClass: studentToUpdate.class || '',
+              reason: sheetReason ? `Black Sheet - ${sheetReason}` : 'Black Sheet',
+              startDate: startDate.toISOString(),
+              endDate: endDate.toISOString()
+            })
+          }).then(() => fetchIneligibleRecords()).catch(err => console.error("Error creating black sheet ineligible record:", err));
         } else if (performanceView === 'sheets_yellow') {
           updated.sheetTally = (studentToUpdate.sheetTally || 0) - 4;
           logHistory(studentToUpdate.id, 'Yellow Sheet', -4, sheetReason);
@@ -2242,69 +2256,74 @@ ${selectedStudentSummaries.join('\n')}`;
     e.preventDefault();
     if (ineligibleSelectedStudents.length === 0) return;
 
-    const nowIso = new Date().toISOString();
-    let studentsToUpsert = [];
+    const startDate = new Date();
+    const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    ineligibleSelectedStudents.forEach(studentId => {
+      const student = students.find(s => s.id === studentId);
+      if (!student) return;
+
+      fetch('/api/ineligible', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          studentId: student.id,
+          studentName: student.name,
+          studentClass: student.class || '',
+          reason: ineligibleReasonInput || 'Black Sheet / Misconduct',
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        })
+      })
+      .then(() => {
+        fetchIneligibleRecords();
+        logHistory(student.id, 'Ineligible', 0, ineligibleReasonInput || 'Marked Ineligible');
+      })
+      .catch(err => console.error("Error adding ineligible record:", err));
+    });
+
     const updatedStudents = students.map(s => {
       if (ineligibleSelectedStudents.includes(s.id)) {
-        const updated = {
+        return {
           ...s,
           ineligible: true,
           ineligibleReason: ineligibleReasonInput || s.ineligibleReason || 'Black Sheet / Misconduct',
-          ineligibleDate: s.ineligibleDate || nowIso
+          ineligibleDate: startDate.toISOString()
         };
-        studentsToUpsert.push(updated);
-        logHistory(s.id, 'Ineligible', 0, ineligibleReasonInput || 'Marked Ineligible');
-        return updated;
       }
       return s;
     });
 
     setStudents(updatedStudents);
-    fetch('/api/students/bulk-upsert', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ students: studentsToUpsert })
-    }).catch(err => console.error("Error bulk upserting ineligible:", err));
-
     setShowAddIneligibleModal(false);
     setIneligibleSelectedStudents([]);
     setIneligibleReasonInput('');
   };
 
-  const handleRemoveIneligible = (studentId) => {
-    const targetStudent = students.find(s => s.id === studentId);
-    if (!targetStudent) return;
+  const handleRemoveIneligibleRecord = (record) => {
+    if (!record) return;
+    const now = Date.now();
+    const endTime = record.endDate ? new Date(record.endDate).getTime() : 0;
+    const isExpired = !isNaN(endTime) && endTime > 0 && now >= endTime;
 
-    // Requirement 3: Check early removal permissions (Admin / Power Admin only before 1-month expiry)
-    const daysLeft = getIneligibleDaysRemaining(targetStudent);
-    const isExpired = daysLeft <= 0;
-
+    // Requirement 2: Manual removal before 1-month expiry is restricted ONLY to Admin (Power Admin)
     if (!isExpired && !isAdminAuthenticated) {
       setIneligibleAuthErrorModal(true);
       return;
     }
 
-    let studentToUpdate = null;
-    const updatedStudents = students.map(s => {
-      if (s.id === studentId) {
-        studentToUpdate = {
-          ...s,
-          ineligible: false,
-          ineligibleReason: '',
-          ineligibleDate: null
-        };
-        return studentToUpdate;
-      }
-      return s;
-    });
-    if (studentToUpdate) {
-      setStudents(updatedStudents);
-      fetch('/api/students/bulk-upsert', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ students: [studentToUpdate] })
-      }).catch(err => console.error("Error bulk upserting ineligible removal:", err));
-    }
+    fetch(`/api/ineligible/${record.id}`, { method: 'DELETE' })
+      .then(res => res.json())
+      .then(() => {
+        fetchIneligibleRecords();
+        setStudents(prev => prev.map(s => {
+          if (s.id === record.studentId) {
+            return { ...s, ineligible: false, ineligibleReason: '', ineligibleDate: null };
+          }
+          return s;
+        }));
+      })
+      .catch(err => console.error("Error removing ineligible record:", err));
   };
 
   const [dbLoading, setDbLoading] = useState(true);
@@ -7285,51 +7304,46 @@ ${selectedStudentSummaries.join('\n')}`;
                   </div>
                 ) : performanceView === 'ineligible' ? (
                   (() => {
-                    const allIneligible = students.filter(s => s.ineligible);
+                    let activeRecords = [...ineligibleRecords];
+                    if (activeRecords.length === 0) {
+                      students.filter(s => s.ineligible).forEach(s => {
+                        const start = s.ineligibleDate ? new Date(s.ineligibleDate) : new Date();
+                        const end = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+                        activeRecords.push({
+                          id: `fallback-${s.id}`,
+                          studentId: s.id,
+                          studentName: s.name,
+                          studentClass: s.class,
+                          reason: s.ineligibleReason || 'Black Sheet / Misconduct',
+                          startDate: start.toISOString(),
+                          endDate: end.toISOString()
+                        });
+                      });
+                    }
 
-                    const filteredIneligible = allIneligible.filter(s => {
-                      if (ineligibleFilterClass !== 'all' && s.class !== ineligibleFilterClass) {
-                        return false;
+                    const filteredRecords = activeRecords.filter(r => {
+                      if (ineligibleFromDate) {
+                        const fromTime = new Date(ineligibleFromDate).setHours(0,0,0,0);
+                        const recStartTime = new Date(r.startDate).setHours(0,0,0,0);
+                        if (isNaN(recStartTime) || recStartTime < fromTime) return false;
                       }
-                      if (ineligibleFilterReason !== 'all') {
-                        const r = (s.ineligibleReason || '').toLowerCase();
-                        if (ineligibleFilterReason === 'black_sheet' && !r.includes('black sheet')) return false;
-                        if (ineligibleFilterReason === 'misconduct' && !r.includes('misconduct')) return false;
-                        if (ineligibleFilterReason === 'malpractice' && !r.includes('malpractice')) return false;
+                      if (ineligibleToDate) {
+                        const toTime = new Date(ineligibleToDate).setHours(23,59,59,999);
+                        const recStartTime = new Date(r.startDate).setHours(23,59,59,999);
+                        if (isNaN(recStartTime) || recStartTime > toTime) return false;
                       }
                       if (ineligibleSearchQuery.trim()) {
                         const q = ineligibleSearchQuery.toLowerCase().trim();
-                        const matchesName = (s.name || '').toLowerCase().includes(q);
-                        const matchesClass = (s.class || '').toLowerCase().includes(q);
-                        const matchesReason = (s.ineligibleReason || '').toLowerCase().includes(q);
-                        const matchesReg = (s.registerNumber || '').toLowerCase().includes(q);
-                        if (!matchesName && !matchesClass && !matchesReason && !matchesReg) return false;
+                        const matchesName = (r.studentName || '').toLowerCase().includes(q);
+                        const matchesClass = (r.studentClass || '').toLowerCase().includes(q);
+                        const matchesReason = (r.reason || '').toLowerCase().includes(q);
+                        if (!matchesName && !matchesClass && !matchesReason) return false;
                       }
                       return true;
                     });
 
-                    const totalBlackSheetsActive = allIneligible.filter(s =>
-                      (s.ineligibleReason || '').toLowerCase().includes('black sheet')
-                    ).length;
-
                     return (
                       <div className="flex-1 overflow-hidden flex flex-col bg-slate-50">
-                        {/* Summary Metrics */}
-                        <div className="p-3 sm:p-4 grid grid-cols-3 gap-3 bg-white border-b border-slate-200 shrink-0">
-                          <div className="p-2.5 sm:p-3 bg-rose-50 border border-rose-100 rounded-xl flex flex-col items-center justify-center text-center">
-                            <span className="text-[10px] font-extrabold text-rose-500 uppercase tracking-wider">Active Ineligible</span>
-                            <span className="text-base sm:text-xl font-black text-rose-700 mt-0.5">{allIneligible.length}</span>
-                          </div>
-                          <div className="p-2.5 sm:p-3 bg-slate-900 text-white rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
-                            <span className="text-[10px] font-extrabold text-slate-300 uppercase tracking-wider">Black Sheet Active</span>
-                            <span className="text-base sm:text-xl font-black text-white mt-0.5">{totalBlackSheetsActive}</span>
-                          </div>
-                          <div className="p-2.5 sm:p-3 bg-cyan-50 border border-cyan-100 rounded-xl flex flex-col items-center justify-center text-center">
-                            <span className="text-[10px] font-extrabold text-cyan-600 uppercase tracking-wider">Filtered Count</span>
-                            <span className="text-base sm:text-xl font-black text-cyan-800 mt-0.5">{filteredIneligible.length}</span>
-                          </div>
-                        </div>
-
                         {/* Search and Action Bar */}
                         <div className="p-3 bg-white border-b border-slate-200 shrink-0 flex flex-wrap items-center justify-between gap-2">
                           <div className="flex items-center gap-2 flex-1 max-w-md">
@@ -7342,16 +7356,16 @@ ${selectedStudentSummaries.join('\n')}`;
                             />
 
                             <button
-                              onClick={() => setShowIneligibleFilterModal(true)}
+                              onClick={() => setShowIneligibleDateFilterModal(true)}
                               className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all border shrink-0 ${
-                                ineligibleFilterClass !== 'all' || ineligibleFilterReason !== 'all'
-                                  ? 'bg-cyan-600 border-cyan-600 text-white hover:bg-cyan-700'
+                                ineligibleFromDate || ineligibleToDate
+                                  ? 'bg-rose-600 border-rose-600 text-white hover:bg-rose-700'
                                   : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
                               }`}
                             >
                               <Filter className="w-3.5 h-3.5" />
                               <span>Filter</span>
-                              {(ineligibleFilterClass !== 'all' || ineligibleFilterReason !== 'all') && (
+                              {(ineligibleFromDate || ineligibleToDate) && (
                                 <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
                               )}
                             </button>
@@ -7365,7 +7379,7 @@ ${selectedStudentSummaries.join('\n')}`;
                           </button>
                         </div>
 
-                        {/* Table */}
+                        {/* Table View */}
                         <div className="flex-1 overflow-y-auto p-4">
                           <table className="w-full text-left text-xs bg-white rounded-xl shadow-sm border border-slate-200">
                             <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider">
@@ -7373,26 +7387,39 @@ ${selectedStudentSummaries.join('\n')}`;
                                 <th className="p-3 font-extrabold w-20">Class</th>
                                 <th className="p-3 font-extrabold">Name</th>
                                 <th className="p-3 font-extrabold">Reason</th>
+                                <th className="p-3 font-extrabold text-center">Start Date</th>
+                                <th className="p-3 font-extrabold text-center">End Date</th>
                                 <th className="p-3 font-extrabold text-center">Black Sheets</th>
                                 <th className="p-3 font-extrabold text-center">Ineligible Times</th>
-                                <th className="p-3 font-extrabold text-center">1-Mo Expiry</th>
                                 <th className="p-3 font-extrabold text-right">Action</th>
                               </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100">
-                              {filteredIneligible.map(s => {
-                                const daysRemaining = getIneligibleDaysRemaining(s);
-                                const blackSheetCount = getStudentBlackSheetCount(s);
-                                const ineligibleTimesCount = getStudentIneligibleTimesCount(s);
-                                const issueDateFormatted = s.ineligibleDate
-                                  ? new Date(s.ineligibleDate).toLocaleDateString('en-GB')
-                                  : 'Recent';
+                              {filteredRecords.map(r => {
+                                const blackSheetCount = getStudentBlackSheetCount(r.studentId);
+                                const ineligibleTimesCount = getStudentIneligibleTimesCount(r.studentId);
+                                const startFormatted = r.startDate
+                                  ? new Date(r.startDate).toLocaleDateString('en-GB')
+                                  : '-';
+                                const endFormatted = r.endDate
+                                  ? new Date(r.endDate).toLocaleDateString('en-GB')
+                                  : '-';
 
                                 return (
-                                  <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                                    <td className="p-3 uppercase font-bold text-[#1A365D]">{s.class}</td>
-                                    <td className="p-3 font-extrabold text-rose-600 uppercase tracking-wider">{s.name}</td>
-                                    <td className="p-3 font-medium text-slate-700">{s.ineligibleReason || '-'}</td>
+                                  <tr key={r.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-3 uppercase font-bold text-[#1A365D]">{r.studentClass}</td>
+                                    <td className="p-3 font-extrabold text-rose-600 uppercase tracking-wider">{r.studentName}</td>
+                                    <td className="p-3 font-medium text-slate-700">{r.reason || '-'}</td>
+                                    <td className="p-3 text-center">
+                                      <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-md font-bold text-[10px]">
+                                        {startFormatted}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <span className="px-2 py-0.5 bg-rose-50 text-rose-700 border border-rose-200 rounded-md font-bold text-[10px]">
+                                        {endFormatted}
+                                      </span>
+                                    </td>
                                     <td className="p-3 text-center">
                                       <span className="px-2 py-0.5 bg-slate-900 text-white rounded-md text-[10px] font-extrabold">
                                         {blackSheetCount}
@@ -7403,17 +7430,9 @@ ${selectedStudentSummaries.join('\n')}`;
                                         {ineligibleTimesCount}
                                       </span>
                                     </td>
-                                    <td className="p-3 text-center">
-                                      <div className="inline-flex flex-col items-center">
-                                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-bold">
-                                          {daysRemaining > 0 ? `${daysRemaining} days left` : 'Expired'}
-                                        </span>
-                                        <span className="text-[9px] text-slate-400 mt-0.5">Issue: {issueDateFormatted}</span>
-                                      </div>
-                                    </td>
                                     <td className="p-3 text-right">
                                       <button
-                                        onClick={() => handleRemoveIneligible(s.id)}
+                                        onClick={() => handleRemoveIneligibleRecord(r)}
                                         className="px-2.5 py-1 text-[10px] font-extrabold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors uppercase tracking-wider border border-rose-200 active:scale-95"
                                       >
                                         Remove
@@ -7422,10 +7441,10 @@ ${selectedStudentSummaries.join('\n')}`;
                                   </tr>
                                 );
                               })}
-                              {filteredIneligible.length === 0 && (
+                              {filteredRecords.length === 0 && (
                                 <tr>
-                                  <td colSpan="7" className="p-8 text-center text-slate-400 font-medium">
-                                    No ineligible students match the active filter or search criteria.
+                                  <td colSpan="8" className="p-8 text-center text-slate-400 font-medium">
+                                    No ineligible student records found matching date range or search criteria.
                                   </td>
                                 </tr>
                               )}
@@ -14772,15 +14791,30 @@ ${selectedStudentSummaries.join('\n')}`;
                 <button
                   type="button"
                   onClick={() => {
-                    const activeList = students.filter(s => s.ineligible).filter(s => {
-                      if (ineligibleFilterClass !== 'all' && s.class !== ineligibleFilterClass) return false;
-                      if (ineligibleSearchQuery.trim()) {
-                        const q = ineligibleSearchQuery.toLowerCase().trim();
-                        return (s.name || '').toLowerCase().includes(q) || (s.class || '').toLowerCase().includes(q) || (s.ineligibleReason || '').toLowerCase().includes(q);
-                      }
-                      return true;
-                    });
-                    handleExportIneligiblePDF(activeList);
+                    let recordsToExport = ineligibleRecords.length > 0 ? [...ineligibleRecords] : students.filter(s => s.ineligible).map(s => ({
+                      studentClass: s.class,
+                      studentName: s.name,
+                      reason: s.ineligibleReason || 'Black Sheet / Misconduct',
+                      startDate: s.ineligibleDate || new Date().toISOString(),
+                      endDate: new Date(new Date(s.ineligibleDate || Date.now()).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+                    }));
+                    if (ineligibleFromDate) {
+                      const fromTime = new Date(ineligibleFromDate).setHours(0,0,0,0);
+                      recordsToExport = recordsToExport.filter(r => new Date(r.startDate).setHours(0,0,0,0) >= fromTime);
+                    }
+                    if (ineligibleToDate) {
+                      const toTime = new Date(ineligibleToDate).setHours(23,59,59,999);
+                      recordsToExport = recordsToExport.filter(r => new Date(r.startDate).setHours(23,59,59,999) <= toTime);
+                    }
+                    if (ineligibleSearchQuery.trim()) {
+                      const q = ineligibleSearchQuery.toLowerCase().trim();
+                      recordsToExport = recordsToExport.filter(r =>
+                        (r.studentName || '').toLowerCase().includes(q) ||
+                        (r.studentClass || '').toLowerCase().includes(q) ||
+                        (r.reason || '').toLowerCase().includes(q)
+                      );
+                    }
+                    handleExportIneligiblePDF(recordsToExport);
                   }}
                   className="p-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs flex flex-col items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all"
                 >
@@ -14791,15 +14825,30 @@ ${selectedStudentSummaries.join('\n')}`;
                 <button
                   type="button"
                   onClick={() => {
-                    const activeList = students.filter(s => s.ineligible).filter(s => {
-                      if (ineligibleFilterClass !== 'all' && s.class !== ineligibleFilterClass) return false;
-                      if (ineligibleSearchQuery.trim()) {
-                        const q = ineligibleSearchQuery.toLowerCase().trim();
-                        return (s.name || '').toLowerCase().includes(q) || (s.class || '').toLowerCase().includes(q) || (s.ineligibleReason || '').toLowerCase().includes(q);
-                      }
-                      return true;
-                    });
-                    handleExportIneligibleExcel(activeList);
+                    let recordsToExport = ineligibleRecords.length > 0 ? [...ineligibleRecords] : students.filter(s => s.ineligible).map(s => ({
+                      studentClass: s.class,
+                      studentName: s.name,
+                      reason: s.ineligibleReason || 'Black Sheet / Misconduct',
+                      startDate: s.ineligibleDate || new Date().toISOString(),
+                      endDate: new Date(new Date(s.ineligibleDate || Date.now()).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString()
+                    }));
+                    if (ineligibleFromDate) {
+                      const fromTime = new Date(ineligibleFromDate).setHours(0,0,0,0);
+                      recordsToExport = recordsToExport.filter(r => new Date(r.startDate).setHours(0,0,0,0) >= fromTime);
+                    }
+                    if (ineligibleToDate) {
+                      const toTime = new Date(ineligibleToDate).setHours(23,59,59,999);
+                      recordsToExport = recordsToExport.filter(r => new Date(r.startDate).setHours(23,59,59,999) <= toTime);
+                    }
+                    if (ineligibleSearchQuery.trim()) {
+                      const q = ineligibleSearchQuery.toLowerCase().trim();
+                      recordsToExport = recordsToExport.filter(r =>
+                        (r.studentName || '').toLowerCase().includes(q) ||
+                        (r.studentClass || '').toLowerCase().includes(q) ||
+                        (r.reason || '').toLowerCase().includes(q)
+                      );
+                    }
+                    handleExportIneligibleExcel(recordsToExport);
                   }}
                   className="p-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs flex flex-col items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all"
                 >
@@ -14819,17 +14868,17 @@ ${selectedStudentSummaries.join('\n')}`;
           </div>
         )}
 
-        {/* Ineligible Filter Modal */}
-        {showIneligibleFilterModal && (
+        {/* Ineligible Date Range Filter Modal */}
+        {showIneligibleDateFilterModal && (
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
             <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full p-6 space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
                 <div className="flex items-center gap-2">
-                  <Filter className="w-5 h-5 text-cyan-600" />
-                  <h3 className="font-extrabold text-slate-800 text-sm">Filter Ineligible Students</h3>
+                  <Filter className="w-5 h-5 text-rose-600" />
+                  <h3 className="font-extrabold text-slate-800 text-sm">Filter Ineligible by Date Range</h3>
                 </div>
                 <button
-                  onClick={() => setShowIneligibleFilterModal(false)}
+                  onClick={() => setShowIneligibleDateFilterModal(false)}
                   className="text-slate-400 hover:text-slate-600 text-lg font-bold"
                 >
                   ✕
@@ -14838,29 +14887,60 @@ ${selectedStudentSummaries.join('\n')}`;
 
               <div className="space-y-3 pt-1">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Class Filter</label>
-                  <select
-                    value={ineligibleFilterClass}
-                    onChange={(e) => setIneligibleFilterClass(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-cyan-500"
-                  >
-                    <option value="all">All Classes</option>
-                    {CLASSES.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
-                  </select>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">From Date</label>
+                  <input
+                    type="date"
+                    value={ineligibleFromDate}
+                    onChange={(e) => setIneligibleFromDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Reason Category</label>
-                  <select
-                    value={ineligibleFilterReason}
-                    onChange={(e) => setIneligibleFilterReason(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-cyan-500"
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">End / To Date</label>
+                  <input
+                    type="date"
+                    value={ineligibleToDate}
+                    onChange={(e) => setIneligibleToDate(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-rose-500"
+                  />
+                </div>
+
+                <div className="flex gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const today = new Date().toISOString().split('T')[0];
+                      setIneligibleFromDate(today);
+                      setIneligibleToDate(today);
+                    }}
+                    className="flex-1 py-1 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold"
                   >
-                    <option value="all">All Reasons</option>
-                    <option value="black_sheet">Black Sheet Entries</option>
-                    <option value="misconduct">Misconduct Entries</option>
-                    <option value="malpractice">Malpractice Entries</option>
-                  </select>
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const d = new Date();
+                      const firstDay = new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split('T')[0];
+                      const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).toISOString().split('T')[0];
+                      setIneligibleFromDate(firstDay);
+                      setIneligibleToDate(lastDay);
+                    }}
+                    className="flex-1 py-1 px-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-[10px] font-bold"
+                  >
+                    This Month
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIneligibleFromDate('');
+                      setIneligibleToDate('');
+                    }}
+                    className="flex-1 py-1 px-2 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-lg text-[10px] font-bold"
+                  >
+                    All Time
+                  </button>
                 </div>
               </div>
 
@@ -14868,10 +14948,10 @@ ${selectedStudentSummaries.join('\n')}`;
                 <button
                   type="button"
                   onClick={() => {
-                    setIneligibleFilterClass('all');
-                    setIneligibleFilterReason('all');
+                    setIneligibleFromDate('');
+                    setIneligibleToDate('');
                     setIneligibleSearchQuery('');
-                    setShowIneligibleFilterModal(false);
+                    setShowIneligibleDateFilterModal(false);
                   }}
                   className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-extrabold transition-colors"
                 >
@@ -14879,8 +14959,8 @@ ${selectedStudentSummaries.join('\n')}`;
                 </button>
                 <button
                   type="button"
-                  onClick={() => setShowIneligibleFilterModal(false)}
-                  className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-colors"
+                  onClick={() => setShowIneligibleDateFilterModal(false)}
+                  className="flex-1 py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-colors"
                 >
                   Apply Filter
                 </button>

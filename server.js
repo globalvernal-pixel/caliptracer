@@ -322,6 +322,21 @@ async function initDb() {
       );
     `);
 
+    // Create Ineligible Records Table
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS ineligible_records (
+        id VARCHAR(255) PRIMARY KEY,
+        student_id VARCHAR(255) NOT NULL,
+        student_name VARCHAR(255) NOT NULL,
+        student_class VARCHAR(50) NOT NULL,
+        reason TEXT DEFAULT '',
+        start_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        end_date TIMESTAMP NOT NULL,
+        status VARCHAR(20) DEFAULT 'ACTIVE',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
   } catch (err) {
     console.error('Database initialization error:', err);
   }
@@ -1291,6 +1306,106 @@ app.post('/api/phone-passes/batch', async (req, res) => {
     res.status(500).json({ error: 'Failed to batch issue phone passes: ' + err.message });
   }
 });
+
+// ==================== INELIGIBLE RECORDS ENDPOINTS ====================
+app.get('/api/ineligible', async (req, res) => {
+  try {
+    const result = await pool.query(
+      "SELECT * FROM ineligible_records ORDER BY start_date DESC"
+    );
+    const records = result.rows.map(r => ({
+      id: r.id,
+      studentId: r.student_id,
+      studentName: r.student_name,
+      studentClass: r.student_class,
+      reason: r.reason,
+      startDate: r.start_date,
+      endDate: r.end_date,
+      status: r.status,
+      createdAt: r.created_at
+    }));
+    res.json(records);
+  } catch (err) {
+    console.error("Error fetching ineligible records:", err);
+    res.status(500).json({ error: "Failed to fetch ineligible records" });
+  }
+});
+
+app.post('/api/ineligible', async (req, res) => {
+  try {
+    const { studentId, studentName, studentClass, reason, startDate, endDate } = req.body;
+    if (!studentId || !studentName) {
+      return res.status(400).json({ error: "studentId and studentName are required" });
+    }
+
+    const id = `inelig-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const start = startDate ? new Date(startDate) : new Date();
+    const end = endDate ? new Date(endDate) : new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const query = `
+      INSERT INTO ineligible_records (id, student_id, student_name, student_class, reason, start_date, end_date, status)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, 'ACTIVE')
+      RETURNING *;
+    `;
+    const result = await pool.query(query, [
+      id,
+      studentId,
+      studentName,
+      studentClass || '',
+      reason || 'Ineligible',
+      start.toISOString(),
+      end.toISOString()
+    ]);
+
+    // Also set student ineligible flag to true
+    await pool.query("UPDATE students SET ineligible = TRUE, ineligible_reason = $1, ineligible_date = $2 WHERE id = $3", [
+      reason || 'Ineligible',
+      start.toISOString(),
+      studentId
+    ]);
+
+    const r = result.rows[0];
+    res.json({
+      id: r.id,
+      studentId: r.student_id,
+      studentName: r.student_name,
+      studentClass: r.student_class,
+      reason: r.reason,
+      startDate: r.start_date,
+      endDate: r.end_date,
+      status: r.status,
+      createdAt: r.created_at
+    });
+  } catch (err) {
+    console.error("Error creating ineligible record:", err);
+    res.status(500).json({ error: "Failed to create ineligible record" });
+  }
+});
+
+app.delete('/api/ineligible/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const findRes = await pool.query("SELECT student_id FROM ineligible_records WHERE id = $1", [id]);
+    if (findRes.rows.length === 0) {
+      return res.status(404).json({ error: "Record not found" });
+    }
+    const studentId = findRes.rows[0].student_id;
+
+    await pool.query("DELETE FROM ineligible_records WHERE id = $1", [id]);
+
+    // Check if student has any active ineligible records remaining
+    const checkActive = await pool.query("SELECT id FROM ineligible_records WHERE student_id = $1 AND status = 'ACTIVE' AND end_date > CURRENT_TIMESTAMP", [studentId]);
+    if (checkActive.rows.length === 0) {
+      await pool.query("UPDATE students SET ineligible = FALSE, ineligible_reason = '', ineligible_date = NULL WHERE id = $1", [studentId]);
+    }
+
+    res.json({ success: true, message: "Ineligible record deleted successfully" });
+  } catch (err) {
+    console.error("Error deleting ineligible record:", err);
+    res.status(500).json({ error: "Failed to delete ineligible record" });
+  }
+});
+
 
 app.put('/api/phone-passes/:id/pickup', async (req, res) => {
   try {
