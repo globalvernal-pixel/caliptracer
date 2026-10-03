@@ -1429,6 +1429,150 @@ export default function App() {
   const [ineligibleSelectedStudents, setIneligibleSelectedStudents] = useState([]);
   const [ineligibleReasonInput, setIneligibleReasonInput] = useState('');
 
+  // Enhanced Ineligible Management State
+  const [showIneligibleExportModal, setShowIneligibleExportModal] = useState(false);
+  const [showIneligibleFilterModal, setShowIneligibleFilterModal] = useState(false);
+  const [ineligibleFilterClass, setIneligibleFilterClass] = useState('all');
+  const [ineligibleFilterReason, setIneligibleFilterReason] = useState('all');
+  const [ineligibleSearchQuery, setIneligibleSearchQuery] = useState('');
+  const [ineligibleAuthErrorModal, setIneligibleAuthErrorModal] = useState(false);
+
+  // Ineligible 1-Month Expiry Helpers (30 Days = 2,592,000,000 ms)
+  const INELIGIBLE_EXPIRY_MS = 30 * 24 * 60 * 60 * 1000;
+
+  const getIneligibleDaysRemaining = (student) => {
+    if (!student || !student.ineligible) return 0;
+    const issueTime = student.ineligibleDate ? new Date(student.ineligibleDate).getTime() : Date.now();
+    if (isNaN(issueTime)) return 30;
+    const elapsed = Date.now() - issueTime;
+    const remainingMs = INELIGIBLE_EXPIRY_MS - elapsed;
+    if (remainingMs <= 0) return 0;
+    return Math.ceil(remainingMs / (1000 * 60 * 60 * 24));
+  };
+
+  const getStudentBlackSheetCount = (student) => {
+    if (!student) return 0;
+    const historyCount = (scoreSheetHistoryLogs || []).filter(h =>
+      String(h.student_id) === String(student.id) &&
+      (h.event_type === 'Black Sheet' || (h.reason && h.reason.toLowerCase().includes('black sheet')))
+    ).length;
+    return Math.max(historyCount, Number(student.blackSheet) || 0);
+  };
+
+  const getStudentIneligibleTimesCount = (student) => {
+    if (!student) return 0;
+    const historyCount = (scoreSheetHistoryLogs || []).filter(h =>
+      String(h.student_id) === String(student.id) &&
+      (h.event_type === 'Ineligible' || (h.reason && h.reason.toLowerCase().includes('ineligible')))
+    ).length;
+    return Math.max(historyCount, student.ineligible ? 1 : 0);
+  };
+
+  // Automatic 1-Month Expiry Cleanup Effect
+  useEffect(() => {
+    if (!students || students.length === 0) return;
+    const now = Date.now();
+    let hasChanges = false;
+    let expiredList = [];
+
+    const updatedStudents = students.map(s => {
+      if (s.ineligible) {
+        if (!s.ineligibleDate) {
+          // Default issue date to current time if missing
+          return { ...s, ineligibleDate: new Date().toISOString() };
+        }
+        const issueTime = new Date(s.ineligibleDate).getTime();
+        if (!isNaN(issueTime) && (now - issueTime) >= INELIGIBLE_EXPIRY_MS) {
+          hasChanges = true;
+          const expired = { ...s, ineligible: false, ineligibleReason: '', ineligibleDate: null };
+          expiredList.push(expired);
+          return expired;
+        }
+      }
+      return s;
+    });
+
+    if (hasChanges && expiredList.length > 0) {
+      console.log(`Auto-expiring ${expiredList.length} ineligible student entries after 1 month.`);
+      setStudents(updatedStudents);
+      fetch('/api/students/bulk-upsert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ students: expiredList })
+      }).catch(err => console.error("Error auto-expiring ineligible students:", err));
+    }
+  }, [students]);
+
+  // PDF Export for Ineligible Students
+  const handleExportIneligiblePDF = (ineligibleList) => {
+    const doc = new jsPDF();
+    doc.setFillColor(225, 29, 72);
+    doc.rect(0, 0, 210, 25, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(15);
+    doc.setFont("helvetica", "bold");
+    doc.text("INELIGIBLE STUDENTS REPORT", 14, 15);
+
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Generated on: ${new Date().toLocaleDateString('en-GB')} | Total Students: ${ineligibleList.length}`, 14, 21);
+
+    const tableRows = ineligibleList.map(s => [
+      (s.class || '').toUpperCase(),
+      s.name || '',
+      s.ineligibleReason || 'Black Sheet / Misconduct'
+    ]);
+
+    autoTable(doc, {
+      startY: 30,
+      head: [['CLASS', 'NAME', 'REASON']],
+      body: tableRows,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [30, 41, 59],
+        textColor: [255, 255, 255],
+        fontSize: 10,
+        fontStyle: 'bold',
+        halign: 'left'
+      },
+      bodyStyles: {
+        fontSize: 9,
+        textColor: [51, 65, 85]
+      },
+      columnStyles: {
+        0: { cellWidth: 30, fontStyle: 'bold' },
+        1: { cellWidth: 60, fontStyle: 'bold' },
+        2: { cellWidth: 100 }
+      }
+    });
+
+    doc.save(`ineligible_students_${new Date().toISOString().split('T')[0]}.pdf`);
+    setShowIneligibleExportModal(false);
+  };
+
+  // Excel Export for Ineligible Students
+  const handleExportIneligibleExcel = (ineligibleList) => {
+    const excelData = ineligibleList.map(s => ({
+      'Class': (s.class || '').toUpperCase(),
+      'Name': s.name || '',
+      'Reason': s.ineligibleReason || 'Black Sheet / Misconduct'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(excelData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Ineligible Students');
+
+    worksheet['!cols'] = [
+      { wch: 14 },
+      { wch: 32 },
+      { wch: 55 }
+    ];
+
+    XLSX.writeFile(workbook, `ineligible_students_${new Date().toISOString().split('T')[0]}.xlsx`);
+    setShowIneligibleExportModal(false);
+  };
+
   const [spotClass, setSpotClass] = useState('');
   const [spotNameSearch, setSpotNameSearch] = useState('');
   const [spotSelectedStudentIds, setSpotSelectedStudentIds] = useState([]);
@@ -1873,6 +2017,8 @@ EV: ${morningBlissEv}`;
           updated.sheetTally = (studentToUpdate.sheetTally || 0) - 8;
           updated.ineligible = true;
           updated.ineligibleReason = sheetReason ? `Black Sheet - ${sheetReason}` : 'Black Sheet';
+          updated.ineligibleDate = new Date().toISOString();
+          updated.blackSheet = (Number(studentToUpdate.blackSheet) || 0) + 1;
           logHistory(studentToUpdate.id, 'Black Sheet', -8, sheetReason);
         } else if (performanceView === 'sheets_yellow') {
           updated.sheetTally = (studentToUpdate.sheetTally || 0) - 4;
@@ -2096,15 +2242,18 @@ ${selectedStudentSummaries.join('\n')}`;
     e.preventDefault();
     if (ineligibleSelectedStudents.length === 0) return;
 
+    const nowIso = new Date().toISOString();
     let studentsToUpsert = [];
     const updatedStudents = students.map(s => {
       if (ineligibleSelectedStudents.includes(s.id)) {
         const updated = {
           ...s,
           ineligible: true,
-          ineligibleReason: ineligibleReasonInput || s.ineligibleReason
+          ineligibleReason: ineligibleReasonInput || s.ineligibleReason || 'Black Sheet / Misconduct',
+          ineligibleDate: s.ineligibleDate || nowIso
         };
         studentsToUpsert.push(updated);
+        logHistory(s.id, 'Ineligible', 0, ineligibleReasonInput || 'Marked Ineligible');
         return updated;
       }
       return s;
@@ -2123,10 +2272,27 @@ ${selectedStudentSummaries.join('\n')}`;
   };
 
   const handleRemoveIneligible = (studentId) => {
+    const targetStudent = students.find(s => s.id === studentId);
+    if (!targetStudent) return;
+
+    // Requirement 3: Check early removal permissions (Admin / Power Admin only before 1-month expiry)
+    const daysLeft = getIneligibleDaysRemaining(targetStudent);
+    const isExpired = daysLeft <= 0;
+
+    if (!isExpired && !isAdminAuthenticated) {
+      setIneligibleAuthErrorModal(true);
+      return;
+    }
+
     let studentToUpdate = null;
     const updatedStudents = students.map(s => {
       if (s.id === studentId) {
-        studentToUpdate = { ...s, ineligible: false, ineligibleReason: '' };
+        studentToUpdate = {
+          ...s,
+          ineligible: false,
+          ineligibleReason: '',
+          ineligibleDate: null
+        };
         return studentToUpdate;
       }
       return s;
@@ -2137,7 +2303,7 @@ ${selectedStudentSummaries.join('\n')}`;
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ students: [studentToUpdate] })
-      }).catch(err => console.error("Error bulk upserting ineligible:", err));
+      }).catch(err => console.error("Error bulk upserting ineligible removal:", err));
     }
   };
 
@@ -6631,33 +6797,47 @@ ${selectedStudentSummaries.join('\n')}`;
 
             ) : (
               <div className="flex flex-col w-full h-full">
-                <div className="p-4 bg-white border-b border-slate-200 shadow-sm shrink-0 flex items-center gap-3">
-                  <button
-                    onClick={() => {
-                      if (performanceSelectedStudents.length > 0) {
-                        setPerformanceSelectedStudents([]);
-                      } else if (performanceView === 'room' && selectedRoom) {
-                        setSelectedRoom(null);
-                      } else if (performanceView === 'room' && selectedHostel) {
-                        setSelectedHostel(null);
-                      } else if (performanceSelectedClass) {
-                        setPerformanceSelectedClass(null);
-                      } else if (performanceView && performanceView.startsWith('sheets_')) {
-                        setPerformanceView('sheets');
-                      } else {
-                        setPerformanceView(null);
-                        setSelectedHostel(null);
-                        setSelectedRoom(null);
-                      }
-                    }}
-                    className="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors text-[#1A365D]"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h2 className="text-[#1A365D] font-extrabold tracking-wider uppercase text-sm">
-                    {performanceView === 'neat' ? 'Neat and Order' : performanceView === 'room' ? (selectedRoom ? `Room - ${selectedHostel} (${selectedRoom})` : selectedHostel ? `Room - ${selectedHostel}` : 'Hostel Rooms') : performanceView === 'spot' ? 'Spot Fine' : performanceView === 'program' ? 'Program Star' : performanceView === 'ineligible' ? 'Ineligible' : performanceView === 'sheets' ? 'Sheets' : performanceView === 'sheets_black' ? 'Black Sheet' : performanceView === 'sheets_yellow' ? 'Yellow Sheet' : performanceView === 'sheets_apology' ? 'Apology Sheet' : performanceView === 'morning_bliss' ? 'Morning Bliss' : performanceView === 'morning_bliss_results' ? 'Morning Bliss Results' : performanceView === 'summary' ? 'Summary' : ''}
-                    {performanceSelectedClass ? ` - Class ${performanceSelectedClass}` : ''}
-                  </h2>
+                <div className="p-4 bg-white border-b border-slate-200 shadow-sm shrink-0 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        if (performanceSelectedStudents.length > 0) {
+                          setPerformanceSelectedStudents([]);
+                        } else if (performanceView === 'room' && selectedRoom) {
+                          setSelectedRoom(null);
+                        } else if (performanceView === 'room' && selectedHostel) {
+                          setSelectedHostel(null);
+                        } else if (performanceSelectedClass) {
+                          setPerformanceSelectedClass(null);
+                        } else if (performanceView && performanceView.startsWith('sheets_')) {
+                          setPerformanceView('sheets');
+                        } else {
+                          setPerformanceView(null);
+                          setSelectedHostel(null);
+                          setSelectedRoom(null);
+                        }
+                      }}
+                      className="p-2 bg-slate-50 hover:bg-slate-100 rounded-xl transition-colors text-[#1A365D]"
+                    >
+                      <ChevronLeft className="w-5 h-5" />
+                    </button>
+                    <h2 className="text-[#1A365D] font-extrabold tracking-wider uppercase text-sm">
+                      {performanceView === 'neat' ? 'Neat and Order' : performanceView === 'room' ? (selectedRoom ? `Room - ${selectedHostel} (${selectedRoom})` : selectedHostel ? `Room - ${selectedHostel}` : 'Hostel Rooms') : performanceView === 'spot' ? 'Spot Fine' : performanceView === 'program' ? 'Program Star' : performanceView === 'ineligible' ? 'Ineligible' : performanceView === 'sheets' ? 'Sheets' : performanceView === 'sheets_black' ? 'Black Sheet' : performanceView === 'sheets_yellow' ? 'Yellow Sheet' : performanceView === 'sheets_apology' ? 'Apology Sheet' : performanceView === 'morning_bliss' ? 'Morning Bliss' : performanceView === 'morning_bliss_results' ? 'Morning Bliss Results' : performanceView === 'summary' ? 'Summary' : ''}
+                      {performanceSelectedClass ? ` - Class ${performanceSelectedClass}` : ''}
+                    </h2>
+                  </div>
+
+                  {performanceView === 'ineligible' && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => setShowIneligibleExportModal(true)}
+                        className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm active:scale-95 transition-all"
+                      >
+                        <Download className="w-4 h-4" />
+                        <span>Download</span>
+                      </button>
+                    </div>
+                  )}
                 </div>
 
                 {performanceView === 'morning_bliss' ? (
@@ -7104,51 +7284,157 @@ ${selectedStudentSummaries.join('\n')}`;
                     </div>
                   </div>
                 ) : performanceView === 'ineligible' ? (
-                  <div className="flex-1 overflow-hidden flex flex-col">
-                    <div className="p-4 flex items-center justify-between bg-white border-b border-slate-200 shrink-0">
-                      <span className="font-bold text-slate-700">Ineligible Students</span>
-                      <button
-                        onClick={() => setShowAddIneligibleModal(true)}
-                        className="px-4 py-2 bg-rose-600 text-white text-xs font-bold rounded-xl flex items-center gap-2 shadow-sm hover:bg-rose-700 active:scale-95 transition-all"
-                      >
-                        <Plus className="w-4 h-4" /> Add Ineligible
-                      </button>
-                    </div>
-                    <div className="flex-1 overflow-y-auto p-4">
-                      <table className="w-full text-left text-xs bg-white rounded shadow-sm border border-slate-200">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider">
-                          <tr>
-                            <th className="p-3 font-extrabold w-24">Class</th>
-                            <th className="p-3 font-extrabold">Name</th>
-                            <th className="p-3 font-extrabold">Reason</th>
-                            <th className="p-3 font-extrabold text-right">Action</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-slate-100">
-                          {students.filter(s => s.ineligible).map(s => (
-                            <tr key={s.id} className="hover:bg-slate-50 transition-colors">
-                              <td className="p-3 uppercase font-bold text-[#1A365D]">{s.class}</td>
-                              <td className="p-3 font-extrabold text-rose-600 uppercase tracking-widest">{s.name}</td>
-                              <td className="p-3 font-medium text-slate-700">{s.ineligibleReason || '-'}</td>
-                              <td className="p-3 text-right">
-                                <button
-                                  onClick={() => handleRemoveIneligible(s.id)}
-                                  className="text-[10px] font-bold text-slate-400 hover:text-slate-600 transition-colors uppercase tracking-wider"
-                                >
-                                  Remove
-                                </button>
-                              </td>
-                            </tr>
-                          ))}
-                          {students.filter(s => s.ineligible).length === 0 && (
-                            <tr>
-                              <td colSpan="4" className="p-6 text-center text-slate-400 font-medium">No ineligible students.</td>
-                            </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                  (() => {
+                    const allIneligible = students.filter(s => s.ineligible);
+
+                    const filteredIneligible = allIneligible.filter(s => {
+                      if (ineligibleFilterClass !== 'all' && s.class !== ineligibleFilterClass) {
+                        return false;
+                      }
+                      if (ineligibleFilterReason !== 'all') {
+                        const r = (s.ineligibleReason || '').toLowerCase();
+                        if (ineligibleFilterReason === 'black_sheet' && !r.includes('black sheet')) return false;
+                        if (ineligibleFilterReason === 'misconduct' && !r.includes('misconduct')) return false;
+                        if (ineligibleFilterReason === 'malpractice' && !r.includes('malpractice')) return false;
+                      }
+                      if (ineligibleSearchQuery.trim()) {
+                        const q = ineligibleSearchQuery.toLowerCase().trim();
+                        const matchesName = (s.name || '').toLowerCase().includes(q);
+                        const matchesClass = (s.class || '').toLowerCase().includes(q);
+                        const matchesReason = (s.ineligibleReason || '').toLowerCase().includes(q);
+                        const matchesReg = (s.registerNumber || '').toLowerCase().includes(q);
+                        if (!matchesName && !matchesClass && !matchesReason && !matchesReg) return false;
+                      }
+                      return true;
+                    });
+
+                    const totalBlackSheetsActive = allIneligible.filter(s =>
+                      (s.ineligibleReason || '').toLowerCase().includes('black sheet')
+                    ).length;
+
+                    return (
+                      <div className="flex-1 overflow-hidden flex flex-col bg-slate-50">
+                        {/* Summary Metrics */}
+                        <div className="p-3 sm:p-4 grid grid-cols-3 gap-3 bg-white border-b border-slate-200 shrink-0">
+                          <div className="p-2.5 sm:p-3 bg-rose-50 border border-rose-100 rounded-xl flex flex-col items-center justify-center text-center">
+                            <span className="text-[10px] font-extrabold text-rose-500 uppercase tracking-wider">Active Ineligible</span>
+                            <span className="text-base sm:text-xl font-black text-rose-700 mt-0.5">{allIneligible.length}</span>
+                          </div>
+                          <div className="p-2.5 sm:p-3 bg-slate-900 text-white rounded-xl flex flex-col items-center justify-center text-center shadow-sm">
+                            <span className="text-[10px] font-extrabold text-slate-300 uppercase tracking-wider">Black Sheet Active</span>
+                            <span className="text-base sm:text-xl font-black text-white mt-0.5">{totalBlackSheetsActive}</span>
+                          </div>
+                          <div className="p-2.5 sm:p-3 bg-cyan-50 border border-cyan-100 rounded-xl flex flex-col items-center justify-center text-center">
+                            <span className="text-[10px] font-extrabold text-cyan-600 uppercase tracking-wider">Filtered Count</span>
+                            <span className="text-base sm:text-xl font-black text-cyan-800 mt-0.5">{filteredIneligible.length}</span>
+                          </div>
+                        </div>
+
+                        {/* Search and Action Bar */}
+                        <div className="p-3 bg-white border-b border-slate-200 shrink-0 flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-1 max-w-md">
+                            <input
+                              type="text"
+                              placeholder="Search student, class, reason..."
+                              value={ineligibleSearchQuery}
+                              onChange={(e) => setIneligibleSearchQuery(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-medium text-slate-700 outline-none focus:ring-2 focus:ring-rose-500 transition-all"
+                            />
+
+                            <button
+                              onClick={() => setShowIneligibleFilterModal(true)}
+                              className={`px-3 py-1.5 rounded-xl text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition-all border shrink-0 ${
+                                ineligibleFilterClass !== 'all' || ineligibleFilterReason !== 'all'
+                                  ? 'bg-cyan-600 border-cyan-600 text-white hover:bg-cyan-700'
+                                  : 'bg-slate-100 border-slate-200 text-slate-700 hover:bg-slate-200'
+                              }`}
+                            >
+                              <Filter className="w-3.5 h-3.5" />
+                              <span>Filter</span>
+                              {(ineligibleFilterClass !== 'all' || ineligibleFilterReason !== 'all') && (
+                                <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                              )}
+                            </button>
+                          </div>
+
+                          <button
+                            onClick={() => setShowAddIneligibleModal(true)}
+                            className="px-3.5 py-1.5 bg-rose-600 text-white text-xs font-extrabold rounded-xl flex items-center gap-1.5 shadow-sm hover:bg-rose-700 active:scale-95 transition-all shrink-0"
+                          >
+                            <Plus className="w-4 h-4" /> Add Ineligible
+                          </button>
+                        </div>
+
+                        {/* Table */}
+                        <div className="flex-1 overflow-y-auto p-4">
+                          <table className="w-full text-left text-xs bg-white rounded-xl shadow-sm border border-slate-200">
+                            <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase tracking-wider">
+                              <tr>
+                                <th className="p-3 font-extrabold w-20">Class</th>
+                                <th className="p-3 font-extrabold">Name</th>
+                                <th className="p-3 font-extrabold">Reason</th>
+                                <th className="p-3 font-extrabold text-center">Black Sheets</th>
+                                <th className="p-3 font-extrabold text-center">Ineligible Times</th>
+                                <th className="p-3 font-extrabold text-center">1-Mo Expiry</th>
+                                <th className="p-3 font-extrabold text-right">Action</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100">
+                              {filteredIneligible.map(s => {
+                                const daysRemaining = getIneligibleDaysRemaining(s);
+                                const blackSheetCount = getStudentBlackSheetCount(s);
+                                const ineligibleTimesCount = getStudentIneligibleTimesCount(s);
+                                const issueDateFormatted = s.ineligibleDate
+                                  ? new Date(s.ineligibleDate).toLocaleDateString('en-GB')
+                                  : 'Recent';
+
+                                return (
+                                  <tr key={s.id} className="hover:bg-slate-50 transition-colors">
+                                    <td className="p-3 uppercase font-bold text-[#1A365D]">{s.class}</td>
+                                    <td className="p-3 font-extrabold text-rose-600 uppercase tracking-wider">{s.name}</td>
+                                    <td className="p-3 font-medium text-slate-700">{s.ineligibleReason || '-'}</td>
+                                    <td className="p-3 text-center">
+                                      <span className="px-2 py-0.5 bg-slate-900 text-white rounded-md text-[10px] font-extrabold">
+                                        {blackSheetCount}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <span className="px-2 py-0.5 bg-rose-50 text-rose-700 rounded-md text-[10px] font-extrabold border border-rose-100">
+                                        {ineligibleTimesCount}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <div className="inline-flex flex-col items-center">
+                                        <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md text-[10px] font-bold">
+                                          {daysRemaining > 0 ? `${daysRemaining} days left` : 'Expired'}
+                                        </span>
+                                        <span className="text-[9px] text-slate-400 mt-0.5">Issue: {issueDateFormatted}</span>
+                                      </div>
+                                    </td>
+                                    <td className="p-3 text-right">
+                                      <button
+                                        onClick={() => handleRemoveIneligible(s.id)}
+                                        className="px-2.5 py-1 text-[10px] font-extrabold text-rose-600 bg-rose-50 hover:bg-rose-100 rounded-lg transition-colors uppercase tracking-wider border border-rose-200 active:scale-95"
+                                      >
+                                        Remove
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                              {filteredIneligible.length === 0 && (
+                                <tr>
+                                  <td colSpan="7" className="p-8 text-center text-slate-400 font-medium">
+                                    No ineligible students match the active filter or search criteria.
+                                  </td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    );
+                  })()
                 ) : performanceView === 'sheets' ? (
                   <div className="w-full max-w-sm p-4 mx-auto animate-fade-in flex flex-col gap-4 mt-8">
                     <div className="text-center mb-4">
@@ -14467,6 +14753,162 @@ ${selectedStudentSummaries.join('\n')}`;
                   Close
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+        {/* Ineligible Export Choice Modal */}
+        {showIneligibleExportModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full p-6 text-center space-y-5">
+              <div className="w-12 h-12 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+                <Download className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-slate-800 font-extrabold text-base">Export Ineligible Roster</h3>
+                <p className="text-slate-500 text-xs mt-1">Select your preferred file format for download</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const activeList = students.filter(s => s.ineligible).filter(s => {
+                      if (ineligibleFilterClass !== 'all' && s.class !== ineligibleFilterClass) return false;
+                      if (ineligibleSearchQuery.trim()) {
+                        const q = ineligibleSearchQuery.toLowerCase().trim();
+                        return (s.name || '').toLowerCase().includes(q) || (s.class || '').toLowerCase().includes(q) || (s.ineligibleReason || '').toLowerCase().includes(q);
+                      }
+                      return true;
+                    });
+                    handleExportIneligiblePDF(activeList);
+                  }}
+                  className="p-4 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl font-black text-xs flex flex-col items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all"
+                >
+                  <FileText className="w-6 h-6" />
+                  <span>PDF Format</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const activeList = students.filter(s => s.ineligible).filter(s => {
+                      if (ineligibleFilterClass !== 'all' && s.class !== ineligibleFilterClass) return false;
+                      if (ineligibleSearchQuery.trim()) {
+                        const q = ineligibleSearchQuery.toLowerCase().trim();
+                        return (s.name || '').toLowerCase().includes(q) || (s.class || '').toLowerCase().includes(q) || (s.ineligibleReason || '').toLowerCase().includes(q);
+                      }
+                      return true;
+                    });
+                    handleExportIneligibleExcel(activeList);
+                  }}
+                  className="p-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-xs flex flex-col items-center justify-center gap-2 shadow-md hover:shadow-lg active:scale-95 transition-all"
+                >
+                  <TableIcon className="w-6 h-6" />
+                  <span>Excel (.xlsx)</span>
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowIneligibleExportModal(false)}
+                className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl font-extrabold text-xs transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Ineligible Filter Modal */}
+        {showIneligibleFilterModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl border border-slate-100 max-w-sm w-full p-6 space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-5 h-5 text-cyan-600" />
+                  <h3 className="font-extrabold text-slate-800 text-sm">Filter Ineligible Students</h3>
+                </div>
+                <button
+                  onClick={() => setShowIneligibleFilterModal(false)}
+                  className="text-slate-400 hover:text-slate-600 text-lg font-bold"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <div className="space-y-3 pt-1">
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Class Filter</label>
+                  <select
+                    value={ineligibleFilterClass}
+                    onChange={(e) => setIneligibleFilterClass(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-cyan-500"
+                  >
+                    <option value="all">All Classes</option>
+                    {CLASSES.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1">Reason Category</label>
+                  <select
+                    value={ineligibleFilterReason}
+                    onChange={(e) => setIneligibleFilterReason(e.target.value)}
+                    className="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-xl p-2.5 text-xs font-bold outline-none focus:ring-2 focus:ring-cyan-500"
+                  >
+                    <option value="all">All Reasons</option>
+                    <option value="black_sheet">Black Sheet Entries</option>
+                    <option value="misconduct">Misconduct Entries</option>
+                    <option value="malpractice">Malpractice Entries</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIneligibleFilterClass('all');
+                    setIneligibleFilterReason('all');
+                    setIneligibleSearchQuery('');
+                    setShowIneligibleFilterModal(false);
+                  }}
+                  className="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-xl text-xs font-extrabold transition-colors"
+                >
+                  Reset Filter
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowIneligibleFilterModal(false)}
+                  className="flex-1 py-2.5 bg-cyan-600 hover:bg-cyan-700 text-white rounded-xl text-xs font-extrabold shadow-sm transition-colors"
+                >
+                  Apply Filter
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Admin Authorization Warning Modal */}
+        {ineligibleAuthErrorModal && (
+          <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fade-in">
+            <div className="bg-white rounded-3xl shadow-2xl border border-rose-100 max-w-sm w-full p-6 text-center space-y-4">
+              <div className="w-14 h-14 bg-rose-100 text-rose-600 rounded-full flex items-center justify-center mx-auto shadow-inner">
+                <ShieldAlert className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-slate-900 font-black text-base">Admin Authorization Required</h3>
+                <p className="text-slate-600 text-xs mt-2 leading-relaxed font-medium">
+                  Early manual removal of Black Sheet & Ineligible entries before the 1-month automatic expiry period is restricted and allowed <strong>only for Admin (Power Admin)</strong>.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIneligibleAuthErrorModal(false)}
+                className="w-full py-2.5 bg-rose-600 hover:bg-rose-700 text-white rounded-xl font-extrabold text-xs shadow-md transition-all active:scale-95"
+              >
+                Understood
+              </button>
             </div>
           </div>
         )}

@@ -98,6 +98,7 @@ function mapRowToStudent(row) {
     apologyLetter: Number(row.apology_letter) || 0,
     ineligible: row.ineligible || false,
     ineligibleReason: row.ineligible_reason || '',
+    ineligibleDate: row.ineligible_date ? (row.ineligible_date instanceof Date ? row.ineligible_date.toISOString() : String(row.ineligible_date)) : null,
     morningBlissMark: row.morning_bliss_mark || null,
     morningBlissTopic: row.morning_bliss_topic || '',
     morningBlissEv: row.morning_bliss_ev || '',
@@ -225,6 +226,7 @@ async function initDb() {
       ADD COLUMN IF NOT EXISTS fine_reason TEXT DEFAULT '',
       ADD COLUMN IF NOT EXISTS ineligible BOOLEAN DEFAULT false,
       ADD COLUMN IF NOT EXISTS ineligible_reason TEXT DEFAULT '',
+      ADD COLUMN IF NOT EXISTS ineligible_date TIMESTAMP,
       ADD COLUMN IF NOT EXISTS morning_bliss_mark NUMERIC,
       ADD COLUMN IF NOT EXISTS morning_bliss_topic TEXT DEFAULT '',
       ADD COLUMN IF NOT EXISTS morning_bliss_ev TEXT DEFAULT '',
@@ -613,6 +615,7 @@ app.post('/api/students/bulk-upsert', async (req, res) => {
       const fineReasons = students.map(s => s.fineReason || '');
       const ineligibles = students.map(s => s.ineligible || false);
       const ineligibleReasons = students.map(s => s.ineligibleReason || '');
+      const ineligibleDates = students.map(s => s.ineligibleDate ? new Date(s.ineligibleDate) : (s.ineligible ? new Date() : null));
       const mbMarks = students.map(s => s.morningBlissMark === undefined ? null : s.morningBlissMark);
       const mbTopics = students.map(s => s.morningBlissTopic || '');
       const mbEvs = students.map(s => s.morningBlissEv || '');
@@ -624,8 +627,8 @@ app.post('/api/students/bulk-upsert', async (req, res) => {
       const summaryIds = students.map(s => (s.summaryId !== undefined && s.summaryId !== null && s.summaryId !== '') ? Number(s.summaryId) : null);
 
       await client.query(`
-        INSERT INTO students (id, name, class, star, tally, star_reason, tally_reason, diary_star, diary_tally, neat_and_order_tally, neat_and_order_reason, neat_and_order_incidents, fine, fine_count, fine_reason, ineligible, ineligible_reason, morning_bliss_mark, morning_bliss_topic, morning_bliss_ev, morning_bliss_script, morning_bliss_star, morning_bliss_duration, custom_total, custom_grade, summary_id)
-        SELECT * FROM UNNEST($1::varchar[], $2::varchar[], $3::varchar[], $4::int[], $5::int[], $6::text[], $7::text[], $8::int[], $9::int[], $10::int[], $11::text[], $23::int[], $12::int[], $13::int[], $14::text[], $15::boolean[], $16::text[], $17::numeric[], $18::text[], $19::text[], $20::numeric[], $21::int[], $22::text[], $24::int[], $25::text[], $26::int[])
+        INSERT INTO students (id, name, class, star, tally, star_reason, tally_reason, diary_star, diary_tally, neat_and_order_tally, neat_and_order_reason, neat_and_order_incidents, fine, fine_count, fine_reason, ineligible, ineligible_reason, morning_bliss_mark, morning_bliss_topic, morning_bliss_ev, morning_bliss_script, morning_bliss_star, morning_bliss_duration, custom_total, custom_grade, summary_id, ineligible_date)
+        SELECT * FROM UNNEST($1::varchar[], $2::varchar[], $3::varchar[], $4::int[], $5::int[], $6::text[], $7::text[], $8::int[], $9::int[], $10::int[], $11::text[], $23::int[], $12::int[], $13::int[], $14::text[], $15::boolean[], $16::text[], $17::numeric[], $18::text[], $19::text[], $20::numeric[], $21::int[], $22::text[], $24::int[], $25::text[], $26::int[], $27::timestamp[])
         ON CONFLICT (id) DO UPDATE SET
           name = EXCLUDED.name,
           class = EXCLUDED.class,
@@ -643,6 +646,7 @@ app.post('/api/students/bulk-upsert', async (req, res) => {
           fine_reason = EXCLUDED.fine_reason,
           ineligible = EXCLUDED.ineligible,
           ineligible_reason = EXCLUDED.ineligible_reason,
+          ineligible_date = EXCLUDED.ineligible_date,
           morning_bliss_mark = EXCLUDED.morning_bliss_mark,
           morning_bliss_topic = EXCLUDED.morning_bliss_topic,
           morning_bliss_ev = EXCLUDED.morning_bliss_ev,
@@ -652,7 +656,7 @@ app.post('/api/students/bulk-upsert', async (req, res) => {
           custom_total = EXCLUDED.custom_total,
           custom_grade = EXCLUDED.custom_grade,
           summary_id = EXCLUDED.summary_id
-      `, [ids, names, classes, stars, tallies, starReasons, tallyReasons, diaryStars, diaryTallies, noTallies, noReasons, fines, fineCounts, fineReasons, ineligibles, ineligibleReasons, mbMarks, mbTopics, mbEvs, mbScripts, mbStars, mbDurations, noIncidents, customTotals, customGrades, summaryIds]);
+      `, [ids, names, classes, stars, tallies, starReasons, tallyReasons, diaryStars, diaryTallies, noTallies, noReasons, fines, fineCounts, fineReasons, ineligibles, ineligibleReasons, mbMarks, mbTopics, mbEvs, mbScripts, mbStars, mbDurations, noIncidents, customTotals, customGrades, summaryIds, ineligibleDates]);
     }
     await client.query('COMMIT');
     res.json({ success: true, count: students.length });
