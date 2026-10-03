@@ -2263,6 +2263,31 @@ ${selectedStudentSummaries.join('\n')}`;
 
     const startDate = new Date();
     const endDate = new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const studentsToUpsert = [];
+
+    const updatedStudents = students.map(s => {
+      if (ineligibleSelectedStudents.includes(s.id)) {
+        const updated = {
+          ...s,
+          ineligible: true,
+          ineligibleReason: ineligibleReasonInput || s.ineligibleReason || 'Black Sheet / Misconduct',
+          ineligibleDate: startDate.toISOString()
+        };
+        studentsToUpsert.push(updated);
+        return updated;
+      }
+      return s;
+    });
+
+    setStudents(updatedStudents);
+
+    if (studentsToUpsert.length > 0) {
+      fetch('/api/students/bulk-upsert', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ students: studentsToUpsert })
+      }).catch(err => console.error("Error bulk upserting ineligible students:", err));
+    }
 
     ineligibleSelectedStudents.forEach(studentId => {
       const student = students.find(s => s.id === studentId);
@@ -2287,19 +2312,6 @@ ${selectedStudentSummaries.join('\n')}`;
       .catch(err => console.error("Error adding ineligible record:", err));
     });
 
-    const updatedStudents = students.map(s => {
-      if (ineligibleSelectedStudents.includes(s.id)) {
-        return {
-          ...s,
-          ineligible: true,
-          ineligibleReason: ineligibleReasonInput || s.ineligibleReason || 'Black Sheet / Misconduct',
-          ineligibleDate: startDate.toISOString()
-        };
-      }
-      return s;
-    });
-
-    setStudents(updatedStudents);
     setShowAddIneligibleModal(false);
     setIneligibleSelectedStudents([]);
     setIneligibleReasonInput('');
@@ -2317,16 +2329,33 @@ ${selectedStudentSummaries.join('\n')}`;
       return;
     }
 
-    fetch(`/api/ineligible/${record.id}`, { method: 'DELETE' })
+    // Call API to mark record as REMOVED (preserving history log)
+    fetch(`/api/ineligible/${record.id}?action=remove`, { method: 'DELETE' })
       .then(res => res.json())
       .then(() => {
         fetchIneligibleRecords();
-        setStudents(prev => prev.map(s => {
-          if (s.id === record.studentId) {
-            return { ...s, ineligible: false, ineligibleReason: '', ineligibleDate: null };
-          }
-          return s;
-        }));
+        // Only update student.ineligible flag if this student has no remaining active records
+        const remainingActive = (ineligibleRecords || []).filter(r =>
+          String(r.id) !== String(record.id) &&
+          String(r.studentId) === String(record.studentId) &&
+          (r.status || 'ACTIVE').toUpperCase() === 'ACTIVE' &&
+          (!r.endDate || Date.now() < new Date(r.endDate).getTime())
+        );
+
+        if (remainingActive.length === 0) {
+          setStudents(prev => prev.map(s => {
+            if (String(s.id) === String(record.studentId)) {
+              const updated = { ...s, ineligible: false, ineligibleReason: '', ineligibleDate: null };
+              fetch('/api/students/bulk-upsert', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ students: [updated] })
+              }).catch(err => console.error("Error updating student ineligible flag:", err));
+              return updated;
+            }
+            return s;
+          }));
+        }
       })
       .catch(err => console.error("Error removing ineligible record:", err));
   };
@@ -7310,12 +7339,20 @@ ${selectedStudentSummaries.join('\n')}`;
                 ) : performanceView === 'ineligible' ? (
                   (() => {
                     let allRecords = [...ineligibleRecords];
-                    if (allRecords.length === 0) {
-                      students.filter(s => s.ineligible).forEach(s => {
+
+                    // Always merge any student marked ineligible in students list who does not already have an active entry in ineligibleRecords
+                    students.filter(s => s.ineligible).forEach(s => {
+                      const hasActiveInRecord = ineligibleRecords.some(r =>
+                        String(r.studentId) === String(s.id) &&
+                        (r.status || 'ACTIVE').toUpperCase() === 'ACTIVE' &&
+                        (!r.endDate || Date.now() < new Date(r.endDate).getTime())
+                      );
+
+                      if (!hasActiveInRecord) {
                         const start = s.ineligibleDate ? new Date(s.ineligibleDate) : new Date();
                         const end = new Date(start.getTime() + 30 * 24 * 60 * 60 * 1000);
                         allRecords.push({
-                          id: `fallback-${s.id}`,
+                          id: `student-flag-${s.id}`,
                           studentId: s.id,
                           studentName: s.name,
                           studentClass: s.class,
@@ -7324,8 +7361,8 @@ ${selectedStudentSummaries.join('\n')}`;
                           endDate: end.toISOString(),
                           status: 'ACTIVE'
                         });
-                      });
-                    }
+                      }
+                    });
 
                     const isDateFilterActive = Boolean(ineligibleFromDate || ineligibleToDate);
 
