@@ -4830,7 +4830,7 @@ ${selectedStudentSummaries.join('\n')}`;
   if (authLoading) {
     return (
       <div className="fixed inset-0 flex items-center justify-center bg-[#0F172A]">
-        <div className="w-10 h-10 border-4 border-blue-500 border-t-transparent rounded-full animate-spin" />
+        <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -4842,12 +4842,12 @@ ${selectedStudentSummaries.join('\n')}`;
     return (
       <div
         onClick={() => setShowSplash(false)}
-        className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#0F172A] via-[#1A365D] to-[#0F172A] text-white z-[9999] overflow-hidden select-none animate-splash-exit font-sans cursor-pointer"
+        className="fixed inset-0 flex flex-col items-center justify-center bg-gradient-to-b from-[#064E3B] via-[#059669] to-[#064E3B] text-white z-[9999] overflow-hidden select-none animate-splash-exit font-sans cursor-pointer"
         title="Click anywhere to continue"
       >
         {/* Glow effects */}
-        <div className="absolute top-1/4 left-1/4 w-[320px] h-[320px] bg-[#2A4365]/30 rounded-full blur-[100px] animate-pulse pointer-events-none" />
-        <div className="absolute bottom-1/4 right-1/4 w-[320px] h-[320px] bg-[#0284C7]/20 rounded-full blur-[100px] animate-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/4 left-1/4 w-[320px] h-[320px] bg-[#047857]/30 rounded-full blur-[100px] animate-pulse pointer-events-none" />
+        <div className="absolute bottom-1/4 right-1/4 w-[320px] h-[320px] bg-[#10B981]/20 rounded-full blur-[100px] animate-pulse pointer-events-none" style={{ animationDelay: '1s' }} />
 
         {/* Content container */}
         <div className="flex flex-col items-center max-w-sm px-6 text-center animate-fade-in">
@@ -4886,12 +4886,12 @@ ${selectedStudentSummaries.join('\n')}`;
 
 
   return (
-    <div className="w-full max-w-[480px] h-[100dvh] sm:h-[90vh] sm:min-h-[600px] flex flex-col bg-[#F8F9FA] border-none sm:border sm:border-slate-200 rounded-none sm:rounded-2xl shadow-none sm:shadow-[0_12px_36px_rgba(26,54,93,0.12)] overflow-hidden mx-auto sm:my-4 transition-all duration-300 font-sans">
+    <div className="w-full max-w-[480px] h-[100dvh] sm:h-[90vh] sm:min-h-[600px] flex flex-col bg-[#F8F9FA] border-none sm:border sm:border-slate-200 rounded-none sm:rounded-2xl shadow-none sm:shadow-[0_12px_36px_rgba(5,150,105,0.12)] overflow-hidden mx-auto sm:my-4 transition-all duration-300 font-sans">
 
       {/* Database status banner */}
       {dbLoading && (
-        <div className="bg-[#1A365D]/10 border-b border-[#1A365D]/20 text-[#1A365D] text-[11px] font-bold text-center py-1.5 px-4 flex justify-center items-center gap-2 animate-pulse z-20 shrink-0">
-          <div className="w-2 h-2 bg-[#1A365D] rounded-full"></div>
+        <div className="bg-[#059669]/10 border-b border-[#059669]/20 text-[#059669] text-[11px] font-bold text-center py-1.5 px-4 flex justify-center items-center gap-2 animate-pulse z-20 shrink-0">
+          <div className="w-2 h-2 bg-[#059669] rounded-full"></div>
           Syncing with database...
         </div>
       )}
@@ -4906,8 +4906,8 @@ ${selectedStudentSummaries.join('\n')}`;
         </div>
       )}
 
-      {/* App Header (Clean institutional Navy Blue header) */}
-      <header className="flex justify-between items-center p-4 px-5 bg-[#1A365D] text-white shadow-header z-10 shrink-0">
+      {/* App Header (Emerald Green header) */}
+      <header className="flex justify-between items-center p-4 px-5 bg-[#059669] text-white shadow-header z-10 shrink-0">
         <div className="flex items-center gap-3">
           {/* Custom animated back buttons */}
           {activeTab === 'scoring' && activeSlideIndex === 1 && (
@@ -5024,8 +5024,8 @@ ${selectedStudentSummaries.join('\n')}`;
               <div className="w-1/3 h-full flex flex-col p-5 overflow-y-auto gap-4">
                 <div className="flex justify-between items-center text-slate-600">
                   <div className="flex items-center gap-2">
-                    <GraduationCap className="text-[#1A365D] w-4.5 h-4.5" />
-                    <span className="text-xs font-bold uppercase tracking-wider text-[#1A365D]">Active Classrooms</span>
+                    <GraduationCap className="text-[#059669] w-4.5 h-4.5" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-[#059669]">Active Classrooms</span>
                   </div>
                   <span className="text-[11px] font-semibold text-slate-500">{CLASSES.length} Classes</span>
                 </div>
@@ -5044,14 +5044,14 @@ ${selectedStudentSummaries.join('\n')}`;
                           setIsScoring(false);
                           setSearchQuery('');
                         }}
-                        className="group flex justify-between items-center p-4 px-5 rounded-xl border border-slate-200 bg-white text-slate-800 shadow-sm hover:shadow-md hover:border-[#1A365D] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+                        className="group flex justify-between items-center p-4 px-5 rounded-xl border border-slate-200 bg-white text-slate-800 shadow-sm hover:shadow-md hover:border-[#059669] hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
                       >
                         <div className="flex items-center gap-3.5">
-                          <div className="w-10 h-10 rounded-lg bg-slate-100 group-hover:bg-[#1A365D]/10 text-[#1A365D] flex items-center justify-center font-bold text-sm transition-colors">
-                            <BookOpen className="w-5 h-5 text-[#1A365D]" />
+                          <div className="w-10 h-10 rounded-lg bg-emerald-50 group-hover:bg-[#059669]/10 text-[#059669] flex items-center justify-center font-bold text-sm transition-colors">
+                            <BookOpen className="w-5 h-5 text-[#059669]" />
                           </div>
                           <div className="text-left">
-                            <span className="block text-base font-extrabold text-[#1A365D] tracking-wide uppercase">
+                            <span className="block text-base font-extrabold text-[#059669] tracking-wide uppercase">
                               {clsName.toUpperCase()}
                             </span>
                             <span className="text-[11px] font-medium text-slate-500">
@@ -5061,10 +5061,10 @@ ${selectedStudentSummaries.join('\n')}`;
                         </div>
 
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-[#1A365D] group-hover:bg-[#1A365D] group-hover:text-white transition-colors">
+                          <span className="text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-[#059669] group-hover:bg-[#059669] group-hover:text-white transition-colors">
                             {studentLabel}
                           </span>
-                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#1A365D] group-hover:translate-x-0.5 transition-all" />
+                          <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-[#059669] group-hover:translate-x-0.5 transition-all" />
                         </div>
                       </button>
                     );
@@ -5089,12 +5089,12 @@ ${selectedStudentSummaries.join('\n')}`;
                           value={searchQuery}
                           onChange={e => setSearchQuery(e.target.value)}
                           placeholder="Search students by name or roll..."
-                          className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#1A365D] focus:bg-white transition-all duration-200"
+                          className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#059669] focus:bg-white transition-all duration-200"
                         />
                       </div>
                       <button
                         onClick={() => setShowBulkModal(true)}
-                        className="px-3 bg-[#1A365D]/5 border border-[#1A365D]/20 rounded-lg text-xs font-bold text-[#1A365D] hover:bg-[#1A365D] hover:text-white active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
+                        className="px-3 bg-[#059669]/5 border border-[#059669]/20 rounded-lg text-xs font-bold text-[#059669] hover:bg-[#059669] hover:text-white active:scale-95 transition-all flex items-center gap-1.5 shrink-0"
                         title="Bulk Text Entry"
                       >
                         <FileText className="w-3.5 h-3.5" />
@@ -5123,7 +5123,7 @@ ${selectedStudentSummaries.join('\n')}`;
                                 });
                               }
                             }}
-                            className="text-[#1A365D] hover:underline transition-colors"
+                            className="text-[#059669] hover:underline transition-colors"
                           >
                             {filteredStudents.every(s => selectedStudentIds.includes(s.id)) ? 'Deselect All' : 'Select All'}
                           </button>
@@ -5157,21 +5157,21 @@ ${selectedStudentSummaries.join('\n')}`;
                                   );
                                 }}
                                 className={`group flex justify-between items-center p-3.5 px-4 rounded-xl border transition-all duration-200 cursor-pointer ${isSelected
-                                    ? 'border-[#1A365D] bg-[#1A365D]/5 shadow-sm'
+                                    ? 'border-[#059669] bg-[#059669]/5 shadow-sm'
                                     : 'border-slate-200 bg-white hover:bg-slate-50 hover:border-slate-300'
                                   }`}
                               >
                                 <div className="flex items-center gap-3 flex-1 min-w-0 mr-2">
                                   <div
                                     className={`w-4 h-4 rounded border flex items-center justify-center transition-all shrink-0 ${isSelected
-                                        ? 'bg-[#1A365D] border-[#1A365D] text-white'
+                                        ? 'bg-[#059669] border-[#059669] text-white'
                                         : 'border-slate-300 bg-white'
                                       }`}
                                   >
                                     {isSelected && <Check className="w-3 h-3 stroke-[3]" />}
                                   </div>
                                   <div className="flex-1 min-w-0">
-                                    <span className="font-extrabold text-[#333333] text-sm block truncate group-hover:text-[#1A365D] transition-colors">
+                                    <span className="font-extrabold text-[#333333] text-sm block truncate group-hover:text-[#059669] transition-colors">
                                       {rollNumber} {student.name}
                                     </span>
                                     <div className="flex gap-2 text-[10px] font-bold mt-0.5">
@@ -5193,7 +5193,7 @@ ${selectedStudentSummaries.join('\n')}`;
                       <div className="p-4 bg-white border-t border-slate-200 shrink-0 shadow-[0_-4px_12px_rgba(0,0,0,0.02)] z-10">
                         <button
                           onClick={() => setIsScoring(true)}
-                          className="w-full py-3.5 bg-[#1A365D] hover:bg-[#2A4365] text-white rounded-xl font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                          className="w-full py-3.5 bg-[#059669] hover:bg-[#047857] text-white rounded-xl font-extrabold text-sm shadow-md transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
                         >
                           Next
                           <ChevronRight className="w-5 h-5" />
@@ -5209,7 +5209,7 @@ ${selectedStudentSummaries.join('\n')}`;
                     {/* Attendance Header Summary Card */}
                     <div className="bg-white border border-slate-200 p-3.5 rounded-xl shadow-xs flex items-center justify-between shrink-0">
                       <div>
-                        <h3 className="text-xs font-extrabold text-[#1A365D] uppercase tracking-wider">
+                        <h3 className="text-xs font-extrabold text-[#059669] uppercase tracking-wider">
                           Night Attendance — Class {selectedClass ? selectedClass.toUpperCase() : ''}
                         </h3>
                         <p className="text-[10px] text-slate-500 font-semibold mt-0.5">
@@ -5614,17 +5614,17 @@ ${selectedStudentSummaries.join('\n')}`;
                       <div className="flex items-center gap-3">
                         <button
                           onClick={() => setSelectedClassMentorIndex(null)}
-                          className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-[#1A365D] hover:text-white transition-colors"
+                          className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-[#059669] hover:text-white transition-colors"
                           title="Go Back"
                         >
                           <ChevronLeft className="w-5 h-5" />
                         </button>
-                        <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white text-sm font-extrabold flex items-center justify-center shadow-sm shrink-0">
+                        <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white text-sm font-extrabold flex items-center justify-center shadow-sm shrink-0">
                           {getInitials(classMentor.name)}
                         </div>
                         <div>
                           <h3 className="text-sm font-extrabold text-[#333333] leading-tight">{classMentor.name}</h3>
-                          <p className="text-[11px] text-indigo-600 font-bold mt-0.5 uppercase tracking-wide">
+                          <p className="text-[11px] text-emerald-600 font-bold mt-0.5 uppercase tracking-wide">
                             Class Mentor • Class {classMentor.classAssigned.toUpperCase()} ({classStudents.length} Students)
                           </p>
                         </div>
@@ -5634,7 +5634,7 @@ ${selectedStudentSummaries.join('\n')}`;
                       <div className="flex items-center gap-2">
                         <button
                           onClick={() => handleDownloadClassMentorSheet(classMentor)}
-                          className="flex items-center gap-1.5 px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold rounded-xl shadow-sm transition-all active:scale-[0.98]"
+                           className="flex items-center gap-1.5 px-3.5 py-2 bg-[#059669] hover:bg-[#047857] text-white text-xs font-extrabold rounded-xl shadow-sm transition-all active:scale-[0.98]"
                           title="Download Excel Sheet"
                         >
                           <Download className="w-4 h-4" />
@@ -5665,7 +5665,7 @@ ${selectedStudentSummaries.join('\n')}`;
                           placeholder="Search student or room..."
                           value={classMentorSearch}
                           onChange={(e) => setClassMentorSearch(e.target.value)}
-                          className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-indigo-500 w-48"
+                          className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-500 w-48"
                         />
                       </div>
 
@@ -5688,7 +5688,7 @@ ${selectedStudentSummaries.join('\n')}`;
                                 <tr key={st.id} className="hover:bg-slate-50/80 transition-colors">
                                   <td className="p-3 text-center text-slate-400 font-bold">{idx + 1}</td>
                                   <td className="p-3 font-extrabold text-slate-800 min-w-[200px] whitespace-nowrap">{st.name}</td>
-                                  <td className="p-3 uppercase font-bold text-indigo-600">{st.class}</td>
+                                  <td className="p-3 uppercase font-bold text-emerald-600">{st.class}</td>
                                   <td className="p-3 text-slate-500 font-semibold">{st.roomNumber || 'N/A'} {st.hostelBlock ? `(${st.hostelBlock})` : ''}</td>
                                   <td className="p-3 text-center">
                                     <span className="px-2 py-0.5 bg-amber-50 text-amber-700 border border-amber-200 rounded-md font-bold text-[11px]">
@@ -9997,8 +9997,8 @@ ${selectedStudentSummaries.join('\n')}`;
                 setSearchQuery('');
               }}
               className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${activeTab === 'scoring'
-                  ? 'bg-[#1A365D] text-white shadow-xs font-extrabold scale-[1.02]'
-                  : 'text-slate-500 hover:text-[#1A365D] hover:bg-slate-100 font-semibold'
+                  ? 'bg-[#059669] text-white shadow-xs font-extrabold scale-[1.02]'
+                  : 'text-slate-500 hover:text-[#059669] hover:bg-emerald-50 font-semibold'
                 }`}
             >
               <Sparkles className={`w-4 h-4 ${activeTab === 'scoring' ? 'text-amber-300' : ''}`} />
@@ -10013,11 +10013,11 @@ ${selectedStudentSummaries.join('\n')}`;
                 setSaveStatus('');
               }}
               className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${activeTab === 'mentor'
-                  ? 'bg-[#1A365D] text-white shadow-xs font-extrabold scale-[1.02]'
-                  : 'text-slate-500 hover:text-[#1A365D] hover:bg-slate-100 font-semibold'
+                  ? 'bg-[#059669] text-white shadow-xs font-extrabold scale-[1.02]'
+                  : 'text-slate-500 hover:text-[#059669] hover:bg-emerald-50 font-semibold'
                 }`}
             >
-              <UserCheck className={`w-4 h-4 ${activeTab === 'mentor' ? 'text-sky-300' : ''}`} />
+              <UserCheck className={`w-4 h-4 ${activeTab === 'mentor' ? 'text-emerald-200' : ''}`} />
               <span className="text-[10px] tracking-wide">Mentor</span>
             </button>
           )}
@@ -10029,11 +10029,11 @@ ${selectedStudentSummaries.join('\n')}`;
                 setSaveStatus('');
               }}
               className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${activeTab === 'performance'
-                  ? 'bg-[#1A365D] text-white shadow-xs font-extrabold scale-[1.02]'
-                  : 'text-slate-500 hover:text-[#1A365D] hover:bg-slate-100 font-semibold'
+                  ? 'bg-[#059669] text-white shadow-xs font-extrabold scale-[1.02]'
+                  : 'text-slate-500 hover:text-[#059669] hover:bg-emerald-50 font-semibold'
                 }`}
             >
-              <TrendingUp className={`w-4 h-4 ${activeTab === 'performance' ? 'text-emerald-300' : ''}`} />
+              <TrendingUp className={`w-4 h-4 ${activeTab === 'performance' ? 'text-emerald-200' : ''}`} />
               <span className="text-[10px] tracking-wide">Performance</span>
             </button>
           )}
@@ -10045,8 +10045,8 @@ ${selectedStudentSummaries.join('\n')}`;
                 setSaveStatus('');
               }}
               className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 relative ${activeTab === 'phone_pass'
-                  ? 'bg-[#1A365D] text-white shadow-xs font-extrabold scale-[1.02]'
-                  : 'text-slate-500 hover:text-[#1A365D] hover:bg-slate-100 font-semibold'
+                  ? 'bg-[#059669] text-white shadow-xs font-extrabold scale-[1.02]'
+                  : 'text-slate-500 hover:text-[#059669] hover:bg-emerald-50 font-semibold'
                 }`}
             >
               <div className="relative">
@@ -10068,14 +10068,14 @@ ${selectedStudentSummaries.join('\n')}`;
                 setSaveStatus('');
               }}
               className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 relative ${activeTab === 'if_lab'
-                  ? 'bg-[#1A365D] text-white shadow-xs font-extrabold scale-[1.02]'
-                  : 'text-slate-500 hover:text-[#1A365D] hover:bg-slate-100 font-semibold'
+                  ? 'bg-[#059669] text-white shadow-xs font-extrabold scale-[1.02]'
+                  : 'text-slate-500 hover:text-[#059669] hover:bg-emerald-50 font-semibold'
                 }`}
             >
               <div className="relative">
-                <Monitor className={`w-4 h-4 ${activeTab === 'if_lab' ? 'text-cyan-300' : ''}`} />
+                <Monitor className={`w-4 h-4 ${activeTab === 'if_lab' ? 'text-cyan-200' : ''}`} />
                 {ifSessions.filter(s => s.status === 'ACTIVE').length > 0 && (
-                  <span className="absolute -top-1.5 -right-2.5 bg-emerald-500 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-pulse">
+                  <span className="absolute -top-1.5 -right-2.5 bg-emerald-400 text-white text-[9px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow-xs animate-pulse">
                     {ifSessions.filter(s => s.status === 'ACTIVE').length}
                   </span>
                 )}
@@ -10091,11 +10091,11 @@ ${selectedStudentSummaries.join('\n')}`;
                 setSaveStatus('');
               }}
               className={`flex-1 py-1.5 px-1 rounded-xl flex flex-col items-center justify-center gap-0.5 transition-all duration-200 ${activeTab === 'admin'
-                  ? 'bg-[#1A365D] text-white shadow-xs font-extrabold scale-[1.02]'
-                  : 'text-slate-500 hover:text-[#1A365D] hover:bg-slate-100 font-semibold'
+                  ? 'bg-[#059669] text-white shadow-xs font-extrabold scale-[1.02]'
+                  : 'text-slate-500 hover:text-[#059669] hover:bg-emerald-50 font-semibold'
                 }`}
             >
-              <Table className={`w-4 h-4 ${activeTab === 'admin' ? 'text-purple-300' : ''}`} />
+              <Table className={`w-4 h-4 ${activeTab === 'admin' ? 'text-emerald-200' : ''}`} />
               <span className="text-[10px] tracking-wide">
                 {isAdminAuthenticated ? 'Admin Sheet' : 'Score Sheet'}
               </span>
@@ -14213,7 +14213,7 @@ ${selectedStudentSummaries.join('\n')}`;
           <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-fadeIn">
             <div className="bg-white rounded-3xl max-w-lg w-full overflow-hidden shadow-2xl border border-slate-100 flex flex-col max-h-[90vh]">
               {/* Modal Header */}
-              <div className="p-4 bg-[#1A365D] text-white flex items-center justify-between shrink-0">
+              <div className="p-4 bg-[#059669] text-white flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2.5">
                   <div className="w-9 h-9 rounded-xl bg-cyan-500/20 border border-cyan-400/30 flex items-center justify-center text-cyan-300">
                     <Monitor className="w-5 h-5" />
@@ -14479,7 +14479,7 @@ ${selectedStudentSummaries.join('\n')}`;
                   type="button"
                   onClick={handleStartIfSession}
                   disabled={ifFormSubmitting || !ifFormSelectedStudent || (ifFormStudentQuota?.isLimitExceeded && !ifFormAllowOverride)}
-                  className="py-2.5 px-5 bg-[#1A365D] hover:bg-[#2A4365] disabled:bg-slate-300 text-white rounded-xl text-xs font-extrabold shadow-md active:scale-95 transition-all flex items-center gap-1.5"
+                  className="py-2.5 px-5 bg-[#059669] hover:bg-[#047857] disabled:bg-slate-300 text-white rounded-xl text-xs font-extrabold shadow-md active:scale-95 transition-all flex items-center gap-1.5"
                 >
                   <Play className="w-4 h-4 fill-current" />
                   <span>{ifFormSubmitting ? 'Starting Session...' : 'Start Session'}</span>
@@ -14494,9 +14494,9 @@ ${selectedStudentSummaries.join('\n')}`;
           <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-2 sm:p-5 overflow-y-auto">
             <div className="bg-white rounded-2xl sm:rounded-3xl shadow-2xl border border-slate-200 w-full max-w-4xl max-h-[92vh] sm:max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in duration-200">
               {/* Header */}
-              <div className="p-3.5 sm:p-5 bg-gradient-to-r from-indigo-900 via-purple-900 to-slate-900 text-white flex items-center justify-between shrink-0">
+              <div className="p-3.5 sm:p-5 bg-gradient-to-r from-emerald-900 via-emerald-700 to-slate-900 text-white flex items-center justify-between shrink-0">
                 <div className="flex items-center gap-2.5 sm:gap-3">
-                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 text-indigo-300 shrink-0">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-md flex items-center justify-center border border-white/20 text-emerald-300 shrink-0">
                     <BookOpen className="w-4 h-4 sm:w-5 sm:h-5" />
                   </div>
                   <div>
@@ -14609,14 +14609,14 @@ ${selectedStudentSummaries.join('\n')}`;
                           <div
                             key={clsName}
                             onClick={() => setSelectedClassForReport(clsName.toLowerCase())}
-                            className="snap-start snap-always shrink-0 min-h-[65vh] md:min-h-0 w-full flex flex-col justify-center items-center p-6 md:p-4 bg-white hover:bg-indigo-50/40 border-2 border-indigo-100 md:border-slate-200 hover:border-indigo-400 rounded-3xl md:rounded-2xl shadow-lg md:shadow-xs hover:shadow-xl cursor-pointer transition-all active:scale-[0.98] group"
+                            className="snap-start snap-always shrink-0 min-h-[65vh] md:min-h-0 w-full flex flex-col justify-center items-center p-6 md:p-4 bg-white hover:bg-emerald-50/40 border-2 border-emerald-100 md:border-slate-200 hover:border-emerald-400 rounded-3xl md:rounded-2xl shadow-lg md:shadow-xs hover:shadow-xl cursor-pointer transition-all active:scale-[0.98] group"
                           >
                             {/* Class Header & Count */}
                             <div className="flex flex-col items-center justify-center gap-1.5 mb-6 md:mb-3 w-full border-b border-slate-100 pb-4 md:pb-2">
-                              <span className="text-xl md:text-sm font-black text-indigo-950 uppercase tracking-wider group-hover:text-indigo-600 transition-colors text-center">
+                              <span className="text-xl md:text-sm font-black text-emerald-950 uppercase tracking-wider group-hover:text-emerald-600 transition-colors text-center">
                                 CLASS {clsName}
                               </span>
-                              <span className="text-xs md:text-[10px] font-extrabold text-indigo-900 bg-indigo-100 border border-indigo-200 px-3 md:px-2 py-1 md:py-0.5 rounded-full">
+                              <span className="text-xs md:text-[10px] font-extrabold text-emerald-900 bg-emerald-100 border border-emerald-200 px-3 md:px-2 py-1 md:py-0.5 rounded-full">
                                 {classSts.length} Students Enrolled
                               </span>
                             </div>
@@ -14638,14 +14638,14 @@ ${selectedStudentSummaries.join('\n')}`;
                                 <span className="text-amber-950 font-black text-sm md:text-xs">{totalYellow}</span>
                               </div>
 
-                              <div className="p-3 md:p-2 bg-indigo-50 border border-indigo-200 rounded-2xl md:rounded-xl flex flex-col md:flex-row items-center justify-between text-center md:text-left gap-1">
-                                <span className="text-indigo-800 font-semibold text-[11px] md:text-xs">📜 Apology</span>
-                                <span className="text-indigo-950 font-black text-sm md:text-xs">{totalApology}</span>
+                              <div className="p-3 md:p-2 bg-emerald-50 border border-emerald-200 rounded-2xl md:rounded-xl flex flex-col md:flex-row items-center justify-between text-center md:text-left gap-1">
+                                <span className="text-emerald-800 font-semibold text-[11px] md:text-xs">📜 Apology</span>
+                                <span className="text-emerald-950 font-black text-sm md:text-xs">{totalApology}</span>
                               </div>
                             </div>
 
                             {/* Touch Indicator / Call-to-action */}
-                            <div className="mt-6 md:mt-3 pt-3 md:pt-2 border-t border-slate-100 w-full flex items-center justify-center gap-1.5 text-xs md:text-[10px] font-extrabold text-indigo-600 group-hover:text-indigo-800">
+                            <div className="mt-6 md:mt-3 pt-3 md:pt-2 border-t border-slate-100 w-full flex items-center justify-center gap-1.5 text-xs md:text-[10px] font-extrabold text-emerald-600 group-hover:text-emerald-800">
                               <span>Tap card to view detailed student breakdown</span>
                               <ChevronRight className="w-4 h-4 md:w-3.5 md:h-3.5 transition-transform group-hover:translate-x-0.5" />
                             </div>
@@ -14694,10 +14694,10 @@ ${selectedStudentSummaries.join('\n')}`;
                           <p className="text-[9px] sm:text-[10px] text-amber-700 font-medium hidden sm:block">Warning & Caution Records</p>
                         </div>
 
-                        <div className="p-3 sm:p-3.5 bg-gradient-to-br from-indigo-500/10 to-indigo-600/5 border border-indigo-200 rounded-2xl">
-                          <p className="text-[9px] sm:text-[10px] font-black text-indigo-800 uppercase tracking-widest">Total Apology Letters</p>
-                          <p className="text-lg sm:text-2xl font-black text-indigo-950 mt-1">{totalApology}</p>
-                          <p className="text-[9px] sm:text-[10px] text-indigo-700 font-medium hidden sm:block">Written Conduct Letters</p>
+                        <div className="p-3 sm:p-3.5 bg-gradient-to-br from-emerald-500/10 to-emerald-600/5 border border-emerald-200 rounded-2xl">
+                          <p className="text-[9px] sm:text-[10px] font-black text-emerald-800 uppercase tracking-widest">Total Apology Letters</p>
+                          <p className="text-lg sm:text-2xl font-black text-emerald-950 mt-1">{totalApology}</p>
+                          <p className="text-[9px] sm:text-[10px] text-emerald-700 font-medium hidden sm:block">Written Conduct Letters</p>
                         </div>
                       </div>
 
